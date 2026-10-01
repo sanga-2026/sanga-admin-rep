@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// Project-wide Firestore rules, shared by the Sanga app and the Sanga admin site (one database,
+// one rules file). This file belongs in the MAIN sanga repo and is deployed from there:
+//     firebase deploy --only firestore:rules
+// Anything not allowed below is DENIED (there is no catch-all rule).
+//
+// Cloud Functions use the Admin SDK, which bypasses these rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin()  { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isMainAdmin() {
+      return isAdmin() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'main';
+    }
+
+    // A person's own profile. They can read it and change profile fields only. The PIN hash, the
+    // lock-out counters and the device list live on the same record, so the browser is never
+    // allowed to write them.
+    //
+    // NOTE: admins are deliberately NOT allowed to read this collection, because each record
+    // contains the PIN hash. The admin site gets names and phone numbers from the adminListUsers
+    // Cloud Function instead. Other people's profiles are served by the getPublicProfile Cloud
+    // Function, which applies each person's privacy settings before returning anything.
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.diff(resource == null ? {} : resource.data).affectedKeys()
+             .hasOnly(['name', 'phone', 'createdAt', 'bio', 'location', 'intentionLabel', 'intentionText',
+                       'avatarDataUrl', 'practices', 'privacy', 'interests']);
+      allow delete: if false;
+    }
+
+    // Admin records. Everyone with a record can read their own; only a MAIN admin can read all,
+    // create, change or remove them (that is how people are promoted and their limits set).
+    // The very first main admin is created by hand in the Firebase console (see README).
+    match /admins/{adminId} {
+      allow read: if signedIn() && (request.auth.uid == adminId || isMainAdmin());
+      allow create, update, delete: if isMainAdmin();
+    }
+  }
+}

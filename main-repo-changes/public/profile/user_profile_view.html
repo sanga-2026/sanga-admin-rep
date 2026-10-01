@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — Sangha</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#FFFFFF; --card:#FFFDF8; --forest:#000; --rust:#F2A94E; --sage:#FBE3B8; --ink:#0D0D0D; --line:#E4E4E4; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Lato',sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:720px;margin:0 auto;padding:24px 20px 70px;}
+  .topbar{display:flex;align-items:center;gap:8px;padding:4px 0 16px;}
+  .home-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);}
+  .home-btn:hover{border-color:var(--rust);}
+  .home-btn svg{stroke:var(--ink);}
+  .hero{background:var(--forest);border-radius:22px;padding:38px 28px 30px;color:#fff;text-align:center;}
+  .avatar{width:88px;height:88px;border-radius:50%;object-fit:cover;background:var(--rust);color:#111;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:30px;margin:0 auto 14px;border:3px solid rgba(255,255,255,.6);overflow:hidden;}
+  .avatar img{width:100%;height:100%;object-fit:cover;}
+  .name{font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;line-height:1.2;}
+  .loc{font-size:13px;opacity:.8;margin-top:10px;display:none;align-items:center;justify-content:center;gap:6px;}
+  .verify-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px;}
+  .v{font-size:12px;padding:7px 13px;border-radius:999px;border:1px solid rgba(242,169,78,.5);background:rgba(242,169,78,.16);color:#fff;}
+  .msg-btn{display:none;margin-top:18px;padding:11px 22px;border-radius:12px;background:var(--rust);color:#fff;font-weight:700;font-size:13.5px;border:none;cursor:pointer;}
+  .msg-btn:hover{opacity:.92;}
+  .stats{display:none;border:1px solid var(--line);border-radius:16px;margin-top:20px;background:var(--card);overflow:hidden;}
+  .stats.show{display:flex;}
+  .stat{flex:1;text-align:center;padding:16px 8px;border-right:1px solid var(--line);}
+  .stat:last-child{border-right:none;}
+  .stat b{display:block;font-family:'Poppins',sans-serif;font-size:22px;color:var(--rust);}
+  .stat span{font-size:12px;opacity:.65;}
+  .section{margin-top:26px;display:none;}
+  .section.show{display:block;}
+  .section-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;margin-bottom:10px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-size:14px;line-height:1.7;}
+  .intention-card{background:var(--sage);border-radius:16px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start;}
+  .intention-card .ic{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:var(--rust);color:#fff;display:flex;align-items:center;justify-content:center;}
+  .intention-card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.6;margin-bottom:3px;}
+  .intention-card .txt{font-family:'Poppins',sans-serif;font-size:15px;line-height:1.5;}
+  .tags-frame{background:var(--forest);border:1px solid rgba(242,169,78,.55);border-radius:14px;padding:14px;display:flex;flex-wrap:wrap;gap:8px;}
+  .tag{font-size:12.5px;padding:7px 14px;border-radius:999px;border:1px solid var(--rust);background:rgba(255,255,255,.06);color:#fff;}
+  .loading, .private-note{text-align:center;opacity:.6;font-size:14px;padding:50px 20px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div data-sg-nav></div>
+  </div>
+
+  <div id="loading" class="loading">Loading profile…</div>
+
+  <div id="content" style="display:none;">
+    <div class="hero">
+      <div class="avatar" id="avatar">?</div>
+      <div class="name" id="name">Member</div>
+      <div class="loc" id="loc">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        <span id="locText"></span>
+      </div>
+      <div class="verify-row" id="verifyRow"></div>
+      <button class="msg-btn" id="msgBtn">Message</button>
+    </div>
+
+    <div class="stats" id="stats">
+      <div class="stat"><b id="sJoined">0</b><span>Experiences joined</span></div>
+      <div class="stat"><b id="sCities">0</b><span>Cities</span></div>
+      <div class="stat"><b id="sHosted">0</b><span>Events hosted</span></div>
+    </div>
+
+    <div class="section" id="aboutSection">
+      <div class="section-title">About</div>
+      <div class="card" id="about"></div>
+    </div>
+
+    <div class="section" id="intentionSection">
+      <div class="intention-card">
+        <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></div>
+        <div style="flex:1;">
+          <div class="lbl" id="intentionLabel">Today's intention</div>
+          <div class="txt" id="intentionText"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="interestsSection">
+      <div class="section-title">Interests</div>
+      <div class="tags-frame" id="interests"></div>
+    </div>
+
+    <div class="section" id="loveSection">
+      <div class="section-title">Love to learn</div>
+      <div class="tags-frame" id="loveTags"></div>
+    </div>
+  </div>
+
+  <div id="privateNote" class="private-note" style="display:none;"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/sanga-data.js"></script>
+<script src="/js/sanga-auth.js"></script>
+<script>
+/* =====================================================================
+   /profile/user_profile_view.html — how OTHER people see a member's profile.
+   (The person's own view + editing lives in /profile/user_profile.html.)
+
+   Open with ?id=<userId>  (or ?host=<name> as a fallback for the
+   sample/host links that don't have an id yet).
+
+   Two rules decide what shows here:
+     1. HIDE IF EMPTY — a section the person never filled in (no bio, no
+        "Love to learn", etc.) simply doesn't appear.
+     2. HIDE IF PRIVACY OFF — the person's Settings choices:
+          showProfile      off -> the whole profile is hidden
+          showCity         off -> city is hidden
+          allowMessages    off -> the Message button is hidden
+          showReservations off -> reservations are hidden (not shown here yet)
+
+   Profiles come from the getPublicProfile Cloud Function (server-side: it applies each person's privacy settings and never returns phone or PIN data). Until the full data migration, some
+   people may have little saved yet — that just means more empty sections,
+   which is fine (they're hidden).
+   ===================================================================== */
+const PRACTICE_LABELS = {
+  vinyasa:"Vinyasa yoga", breathwork:"Breathwork", soundhealing:"Sound healing", forest:"Forest bathing",
+  plantbased:"Plant-based cooking", restorative:"Restorative yoga", yin:"Yin yoga", ayurveda:"Ayurveda",
+  journaling:"Journaling", naturewalks:"Nature walks", coldplunge:"Cold plunge", mindfuleating:"Mindful eating",
+  taichi:"Tai chi", gratitude:"Gratitude practice",
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const params = new URLSearchParams(window.location.search);
+const initials = n => String(n||'').split(/\s+/).filter(Boolean).map(p=>p[0]).slice(0,2).join('').toUpperCase() || '?';
+
+function showPrivate(msg){
+  $('loading').style.display = 'none';
+  $('content').style.display = 'none';
+  $('privateNote').style.display = 'block';
+  $('privateNote').textContent = msg;
+}
+
+function render(name, data){
+  const privacy = (data && data.privacy) || {};
+  // Privacy: if the person turned their profile off, show nothing.
+  // (Default is ON when they've never touched the setting.)
+  if(privacy.showProfile === false){ showPrivate('This member has set their profile to private.'); return; }
+
+  document.title = (name || 'Member') + ' — Sangha';
+  $('name').textContent = name || 'Member';
+
+  // avatar: photo if saved, else initials
+  if(data && data.avatarDataUrl){ $('avatar').innerHTML = `<img src="${esc(data.avatarDataUrl)}" alt="${esc(name)}">`; }
+  else { $('avatar').textContent = initials(name); }
+
+  // city — only if saved AND allowed
+  const city = data && data.location && data.location.city;
+  if(city && privacy.showCity !== false){
+    const parts = [data.location.city, data.location.state, data.location.country].filter(Boolean);
+    $('locText').textContent = parts.join(', ');
+    $('loc').style.display = 'flex';
+  }
+
+  // verification: phone is verified once they've logged in; ID verification is set up later.
+  $('verifyRow').innerHTML = '<span class="v">Phone number · verified</span>';
+
+  // message button — only if they allow messages
+  if(privacy.allowMessages !== false){
+    $('msgBtn').style.display = 'inline-block';
+    $('msgBtn').addEventListener('click', ()=>{
+      const to = params.get('id') || name || '';
+      window.location.href = '/profile/user_profile.html?view=other&with=' + encodeURIComponent(to);
+    });
+  }
+
+  // stats — only if any are meaningful (hide when all zero / unknown)
+  const joined = (data && data.statJoined) || 0, cities = (data && data.statCities) || 0, hosted = (data && data.statHosted) || 0;
+  if(joined || cities || hosted){
+    $('sJoined').textContent = joined; $('sCities').textContent = cities; $('sHosted').textContent = hosted;
+    $('stats').classList.add('show');
+  }
+
+  // About — hide if empty
+  if(data && data.bio && data.bio.trim()){ $('about').textContent = data.bio; $('aboutSection').classList.add('show'); }
+
+  // Today's intention — hide if empty
+  if(data && data.intentionText && data.intentionText.trim()){
+    $('intentionLabel').textContent = data.intentionLabel || "Today's intention";
+    $('intentionText').textContent = '"' + data.intentionText + '"';
+    $('intentionSection').classList.add('show');
+  }
+
+  // Interests — hide if none
+  const interests = (data && Array.isArray(data.interests)) ? data.interests.filter(Boolean) : [];
+  if(interests.length){ $('interests').innerHTML = interests.map(i=>`<span class="tag">${esc(i)}</span>`).join(''); $('interestsSection').classList.add('show'); }
+
+  // Love to learn — hide if none
+  const practices = (data && Array.isArray(data.practices)) ? data.practices : [];
+  if(practices.length){
+    $('loveTags').innerHTML = practices.map(id => `<span class="tag">${esc(PRACTICE_LABELS[id] || id)}</span>`).join('');
+    $('loveSection').classList.add('show');
+  }
+
+  $('loading').style.display = 'none';
+  $('content').style.display = 'block';
+}
+
+(async function init(){
+  const id = params.get('id');
+  const fallbackName = (params.get('host') || params.get('name') || '').trim();
+
+  // No id (e.g. an older host link that only passes a name): show what we can.
+  if(!id){
+    if(fallbackName){ render(fallbackName, {}); }
+    else { showPrivate('No profile to show.'); }
+    return;
+  }
+
+  try{
+    await SanghaAuth.whenReady();
+    // The server reads the private record, applies THIS person's privacy settings and returns only
+    // what they allow others to see (never a phone number or PIN data).
+    const res = await sanghaFunctions.httpsCallable('getPublicProfile')({ id });
+    const data = (res && res.data) || {};
+    if(!data.exists){ render(fallbackName || 'Member', {}); return; }
+    render(data.name || fallbackName || 'Member', data);
+  }catch(e){
+    console.warn('Could not load this profile:', e);
+    // Don't leave a spinner stuck — show whatever name we have.
+    render(fallbackName || 'Member', {});
+  }
+})();
+</script>
+<script src="/js/sanga-nav.js"></script>
+</body>
+</html>

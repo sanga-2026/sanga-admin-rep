@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Host profile — Sangha</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#FFFFFF; --card:#FFFDF8; --forest:#000; --rust:#F2A94E; --sage:#FBE3B8; --ink:#0D0D0D; --line:#E4E4E4; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Lato',sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:720px;margin:0 auto;padding:24px 20px 70px;}
+  .hero{background:var(--forest);border-radius:22px;padding:38px 28px 30px;color:#fff;text-align:center;}
+  .avatar{width:88px;height:88px;border-radius:50%;background:var(--rust);color:#111;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:30px;margin:0 auto 14px;border:3px solid rgba(255,255,255,.6);}
+  .name{font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;line-height:1.2;}
+  .role{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--rust);}
+  .loc{font-size:13px;opacity:.8;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .since{font-size:12px;opacity:.55;margin-top:4px;}
+  .verify-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px;}
+  .v{font-size:12px;padding:7px 13px;border-radius:999px;border:1px dashed rgba(242,169,78,.6);color:#fff;opacity:.85;}
+  .v.ok{border-style:solid;background:rgba(242,169,78,.16);opacity:1;}
+  .stats{display:flex;border:1px solid var(--line);border-radius:16px;margin-top:20px;background:var(--card);overflow:hidden;}
+  .stat{flex:1;text-align:center;padding:16px 8px;border-right:1px solid var(--line);}
+  .stat:last-child{border-right:none;}
+  .stat b{display:block;font-family:'Poppins',sans-serif;font-size:22px;color:var(--rust);}
+  .stat span{font-size:12px;opacity:.65;}
+  .section{margin-top:26px;}
+  .section-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;margin-bottom:10px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-size:14px;line-height:1.7;}
+  .tags-frame{background:var(--forest);border:1px solid rgba(242,169,78,.55);border-radius:14px;padding:14px;display:flex;flex-wrap:wrap;gap:8px;}
+  .tag{font-size:12.5px;padding:7px 14px;border-radius:999px;border:1px solid var(--rust);background:rgba(255,255,255,.06);color:#fff;}
+  .past-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);}
+  .past-row:last-child{border-bottom:none;padding-bottom:0;}
+  .past-row:first-child{padding-top:0;}
+  .past-title{font-weight:700;font-size:14px;}
+  .past-sub{font-size:12px;opacity:.6;margin-top:2px;}
+  .past-when{font-size:12px;opacity:.6;white-space:nowrap;}
+  .muted{opacity:.6;font-size:13.5px;}
+</style>
+<style>html.sg-locked body{visibility:hidden}</style>
+<script>document.documentElement.classList.add("sg-locked")</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="avatar" id="avatar">?</div>
+    <div class="name" id="name">Host</div>
+    <div class="role">Host</div>
+    <div class="loc" id="loc" style="display:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+      <span id="locText"></span>
+    </div>
+    <div class="since" id="since"></div>
+    <div class="verify-row" id="verifyRow"></div>
+  </div>
+
+  <div class="stats" id="stats" style="display:none;">
+    <div class="stat"><b id="sJoined">0</b><span>Experiences joined</span></div>
+    <div class="stat"><b id="sCities">0</b><span>Cities</span></div>
+    <div class="stat"><b id="sHosted">0</b><span>Events hosted</span></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">About</div>
+    <div class="card" id="about"></div>
+  </div>
+
+  <div class="section" id="interestsSection" style="display:none;">
+    <div class="section-title">Interests</div>
+    <div class="tags-frame" id="interests"></div>
+  </div>
+
+  <div class="section" id="pastSection" style="display:none;">
+    <div class="section-title">Hosted before</div>
+    <div class="card" id="past"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/sanga-auth.js"></script>
+<script src="/js/admin-session.js"></script>
+<script>
+/* Sample host profiles — stand-ins until this page reads real profiles.
+   Real version: open with ?hostId=<user id>, load that user's profile from Sangha's
+   data, and show the same fields (this layout is meant to be kept). Unknown hosts fall
+   back to just their name, so a link never breaks. */
+const SAMPLE_HOSTS = {
+  'Meera Iyer':      { location:'Rishikesh, Uttarakhand, India', since:'Jan 2024', idVerified:true,  joined:14, cities:3, hosted:22, bio:'Yoga teacher trained in Rishikesh, sharing gentle riverside practice for all levels. I keep groups small so everyone gets personal attention.', interests:['Vinyasa yoga','Breathwork','Meditation'], past:[['Full Moon Meditation','Rishikesh','Sep 2026'],['Riverside Breathwork','Rishikesh','Aug 2026']] },
+  'Jordan Lee':      { location:'Austin, Texas, United States', since:'Mar 2025', idVerified:true,  joined:9,  cities:2, hosted:11, bio:'Home cook focused on plant-based, seasonal meals. I love cooking alongside people who are sure they can\'t cook.', interests:['Plant-based cooking','Ayurveda','Journaling'], past:[['Vegan Tacos Night','Austin','Sep 2026'],['Farmers Market Cooking Walk','Austin','Aug 2026']] },
+  'Sam Ortiz':       { location:'Denver, Colorado, United States', since:'Jun 2025', idVerified:true,  joined:6,  cities:3, hosted:8,  bio:'Outdoor guide and former park ranger. Slow walks, sensory attention, and plenty of quiet.', interests:['Forest bathing','Sound healing','Journaling'], past:[['Aspen Grove Silent Walk','Denver','Sep 2026'],['Sunrise Sit Spot','Boulder','Aug 2026']] },
+  'Hannah Price':    { location:'London, England, United Kingdom', since:'Feb 2025', idVerified:true,  joined:5,  cities:2, hosted:9,  bio:'Primary school teacher turned storyteller, running small story hours for little ones with puppets and music.', interests:['Storytelling','Art & craft','Music'], past:[['Puppet Story Hour','London','Sep 2026'],['Rainy Day Tales','London','Aug 2026']] },
+  'Omar Khalid':     { location:'Dubai, United Arab Emirates', since:'Nov 2024', idVerified:false, joined:3,  cities:1, hosted:4,  bio:'Amateur astronomer sharing the desert sky with beginners. Bring a jacket — it gets cold after dark.', interests:['Sky gazing','Nature','Photography'], past:[['Desert Sunset Picnic','Dubai','Sep 2026']] },
+  'Divya Rao':       { location:'Bengaluru, Karnataka, India', since:'Apr 2025', idVerified:true,  joined:11, cities:2, hosted:13, bio:'Communication coach helping people speak up with warmth and clarity, one small exercise at a time.', interests:['Public speaking','Storytelling','Journaling'], past:[['Storytelling for Teams','Bengaluru','Sep 2026'],['Interview Confidence Lab','Bengaluru','Aug 2026']] },
+  'Chris Doyle':     { location:'Austin, Texas, United States', since:'Jan 2026', idVerified:true,  joined:4,  cities:1, hosted:5,  bio:'Home baker obsessed with slow fermentation. Bring an apron; leave with bread.', interests:['Baking','Plant-based cooking'], past:[['Focaccia Morning','Austin','Sep 2026']] },
+  'Lucia Fernandez': { location:'Mexico City, Mexico', since:'Aug 2025', idVerified:true,  joined:7,  cities:1, hosted:10, bio:'Zero-waste educator helping households cut their waste with simple, affordable swaps.', interests:['Sustainability','Composting','Upcycling'], past:[['Compost 101','Mexico City','Sep 2026'],['Refill Market Tour','Mexico City','Aug 2026']] },
+  'Rohit Negi':      { location:'Dehradun, Uttarakhand, India', since:'Sep 2025', idVerified:true,  joined:8,  cities:2, hosted:12, bio:'Mountain guide leading friendly beginner treks in the Garhwal foothills.', interests:['Hiking','Forest bathing','Photography'], past:[['Mussoorie Ridge Walk','Dehradun','Sep 2026'],['Sahastradhara Day Hike','Dehradun','Aug 2026']] },
+  'Alicia Brooks':   { location:'Houston, Texas, United States', since:'May 2025', idVerified:true,  joined:3,  cities:1, hosted:6,  bio:'Bakery owner teaching approachable sourdough in our own studio.', interests:['Baking','Community service'], past:[['Pizza Dough Basics','Houston','Sep 2026']] },
+  'Noah Kim':        { location:'San Francisco, California, United States', since:'Jul 2025', idVerified:false, joined:2,  cities:1, hosted:3,  bio:'Sustainability organizer connecting neighbors through swaps and short talks.', interests:['Sustainability','Community service'], past:[['Clothing Swap Night','San Francisco','Sep 2026']] },
+  'Emily Ward':      { location:'Boulder, Colorado, United States', since:'Oct 2024', idVerified:true,  joined:10, cities:2, hosted:15, bio:'Trail runner and hiking guide. Easy creekside outings that welcome complete beginners.', interests:['Hiking','Nature','Forest bathing'], past:[['Flatirons Sunrise Hike','Boulder','Sep 2026'],['Creek Picnic Walk','Boulder','Aug 2026']] },
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const params = new URLSearchParams(window.location.search);
+const hostName = (params.get('host') || '').trim() || 'Host';
+const h = SAMPLE_HOSTS[hostName] || null;
+
+document.title = hostName + ' — host profile — Sangha';
+$('name').textContent = hostName;
+$('avatar').textContent = hostName.split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
+
+if(h){
+  $('loc').style.display = ''; $('locText').textContent = h.location;
+  $('since').textContent = 'Member since ' + h.since;
+  $('verifyRow').innerHTML =
+    '<span class="v ok">Phone number · verified</span>' +
+    (h.idVerified ? '<span class="v ok">Government ID · verified</span>' : '<span class="v">Government ID · not verified</span>');
+  $('stats').style.display = '';
+  $('sJoined').textContent = h.joined; $('sCities').textContent = h.cities; $('sHosted').textContent = h.hosted;
+  $('about').textContent = h.bio;
+  $('interestsSection').style.display = '';
+  $('interests').innerHTML = h.interests.map(i => `<span class="tag">${esc(i)}</span>`).join('');
+  $('pastSection').style.display = '';
+  $('past').innerHTML = h.past.map(p => `<div class="past-row"><div><div class="past-title">${esc(p[0])}</div><div class="past-sub">${esc(p[1])}</div></div><div class="past-when">${esc(p[2])}</div></div>`).join('');
+} else {
+  $('about').innerHTML = '<span class="muted">This host hasn\'t added profile details yet.</span>';
+}
+</script>
+</body>
+</html>

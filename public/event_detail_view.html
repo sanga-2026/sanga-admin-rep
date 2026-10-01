@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Experience details — Sangha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0D0D0D;
+    --cream:#FFFFFF;
+    --card:#FFFDF8;
+    --forest:#000000;
+    --rust:#F2A94E;
+    --sage:#FBE3B8;
+    --line:#E4E4E4;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:'Lato',sans-serif;-webkit-font-smoothing:antialiased;}
+  .display{font-family:'Poppins',sans-serif;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  textarea, input{font-family:inherit;}
+  img{display:block;max-width:100%;}
+
+  .wrap{max-width:600px;margin:0 auto;padding:0 20px 60px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 0;}
+  .badge-wrap{display:flex;align-items:center;gap:8px;}
+  .badge{width:26px;height:26px;border-radius:50%;background:var(--forest);display:flex;align-items:center;justify-content:center;}
+  .badge svg{stroke:var(--rust);}
+  .badge-label{font-family:'Poppins',sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.65;}
+
+  /* ---------- status banner ---------- */
+  .status-banner{display:flex;align-items:center;gap:10px;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700;margin-bottom:16px;}
+  .status-banner.upcoming{background:var(--sage);border:1px solid var(--rust);color:var(--ink);}
+  .status-banner.past{background:var(--card);border:1px solid var(--line);color:var(--ink);opacity:.8;}
+  .status-banner svg{flex-shrink:0;}
+  .status-banner.upcoming svg{stroke:var(--rust);}
+  .status-banner.past svg{stroke:var(--ink);opacity:.6;}
+
+  /* ---------- hero ---------- */
+  .photo{width:100%;aspect-ratio:16/10;border-radius:16px;overflow:hidden;background:#eee;margin-bottom:18px;}
+  .photo img{width:100%;height:100%;object-fit:cover;}
+
+  .cat-chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:var(--forest);color:var(--rust);border:1px solid var(--rust);margin-bottom:10px;}
+
+  h1.title{font-family:'Poppins',sans-serif;font-size:25px;font-weight:700;margin:0 0 14px;line-height:1.25;}
+
+  /* ---------- host row ---------- */
+  .host-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:18px;}
+  .host-avatar{width:42px;height:42px;border-radius:50%;background:var(--forest);color:var(--rust);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;flex-shrink:0;}
+  .host-info{flex:1;min-width:0;}
+  .host-info .label{font-size:11px;opacity:.55;text-transform:uppercase;letter-spacing:.06em;}
+  .host-info .name{font-size:14.5px;font-weight:700;}
+  .host-info .reply-note{font-size:11.5px;opacity:.6;margin-top:1px;}
+
+  /* ---------- meta ---------- */
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+  @media (max-width:420px){ .meta-grid{grid-template-columns:1fr;} }
+  .meta-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;}
+  .meta-item svg{stroke:var(--rust);flex-shrink:0;margin-top:1px;}
+  .meta-item .meta-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;margin-bottom:2px;}
+  .meta-item .meta-val{font-size:13px;font-weight:700;line-height:1.35;}
+
+  /* ---------- sections ---------- */
+  .section-title{font-family:'Poppins',sans-serif;font-size:15.5px;font-weight:700;margin:0 0 10px;}
+  .section{margin-bottom:22px;}
+  .desc-text{font-size:14px;line-height:1.7;opacity:.85;}
+
+  .includes-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+  @media (max-width:420px){ .includes-grid{grid-template-columns:1fr;} }
+  .includes-grid div{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.4;}
+  .includes-grid svg{stroke:var(--rust);flex-shrink:0;margin-top:2px;}
+
+  .logistics-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .logistics-row{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;line-height:1.5;}
+  .logistics-row + .logistics-row{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .logistics-row svg{stroke:var(--rust);flex-shrink:0;margin-top:2px;}
+  .logistics-row .llabel{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;margin-bottom:2px;}
+  .logistics-row a.link-val{color:var(--rust);font-weight:700;word-break:break-all;}
+
+  .cancel-text{font-size:13px;line-height:1.6;opacity:.75;}
+
+  /* ---------- actions ---------- */
+  .actions{display:flex;gap:10px;margin:26px 0 10px;flex-wrap:wrap;}
+  .action-btn{flex:1;min-width:160px;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;font-size:13.5px;font-weight:700;position:relative;}
+  .action-btn svg{flex-shrink:0;}
+  .action-btn.primary{background:var(--rust);color:#fff;}
+  .action-btn.primary:hover{opacity:.92;}
+  .action-btn.secondary{background:var(--forest);color:#fff;}
+  .action-btn.secondary:hover{opacity:.9;}
+  .action-btn.secondary svg{stroke:var(--rust);}
+
+  .cal-menu{position:absolute;bottom:calc(100% + 8px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.12);overflow:hidden;z-index:20;text-align:left;}
+  .cal-menu.hidden{display:none;}
+  .cal-menu button, .cal-menu a{display:block;width:100%;padding:12px 16px;font-size:13px;font-weight:700;color:var(--ink);text-align:left;}
+  .cal-menu button:hover, .cal-menu a:hover{background:var(--card);}
+  .cal-menu button + button, .cal-menu a + a, .cal-menu button + a{border-top:1px solid var(--line);}
+
+  /* ---------- message compose panel ---------- */
+  .compose-panel{margin-top:6px;border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--card);display:none;}
+  .compose-panel.open{display:block;}
+  .compose-panel .compose-title{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;}
+  .compose-panel .compose-sub{font-size:12.5px;opacity:.65;margin-bottom:12px;}
+  .compose-textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13.5px;line-height:1.6;resize:vertical;outline:none;background:#fff;}
+  .compose-textarea:focus{border-color:var(--rust);}
+  .compose-send-row{display:flex;gap:8px;margin-top:10px;}
+  .btn-send{padding:10px 18px;border-radius:9px;background:var(--rust);color:#fff;font-size:12.5px;font-weight:700;}
+  .btn-cancel-msg{padding:10px 18px;border-radius:9px;background:transparent;border:1px solid var(--line);font-size:12.5px;font-weight:700;}
+  .compose-sent{text-align:center;padding:16px 10px;}
+  .compose-sent .check{width:38px;height:38px;border-radius:50%;background:var(--sage);border:1px solid var(--rust);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+  .compose-sent .check svg{stroke:var(--rust);}
+
+  .cal-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(10px);background:var(--forest);color:#fff;font-size:12.5px;font-weight:700;padding:11px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;}
+  .cal-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* ---------- share row ---------- */
+  .share-section{margin-bottom:22px;}
+  .share-row{display:flex;justify-content:space-between;gap:8px;}
+  .share-btn{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;padding:4px 0;}
+  .share-btn:hover .share-icon{transform:translateY(-1px);}
+  .share-icon{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .15s;border:1px solid var(--line);background:var(--card);}
+  .share-icon.email{color:var(--ink);}
+  .share-icon.whatsapp{color:#25D366;border-color:#25D36655;}
+  .share-icon.sms{color:#3B82F6;border-color:#3B82F655;}
+  .share-icon.copylink{color:var(--ink);border-color:var(--line);}
+  .share-label{font-size:11px;font-weight:700;opacity:.75;}
+  @media (max-width:380px){
+    .share-icon{width:42px;height:42px;}
+    .share-icon svg{width:16px;height:16px;}
+    .share-label{font-size:9.5px;}
+  }
+
+  /* ---------- supporting files ---------- */
+  .sf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media (max-width:420px){ .sf-grid{grid-template-columns:1fr;} }
+  .sf-card{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--card);}
+  .sf-card:hover{border-color:var(--rust);}
+  .sf-card img{width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;}
+  .sf-generic-icon{width:42px;height:42px;border-radius:8px;background:var(--sage);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .sf-generic-icon svg{stroke:var(--rust);}
+  .sf-name{font-size:12.5px;font-weight:700;line-height:1.3;}
+  .sf-view{font-size:11px;opacity:.55;margin-top:1px;}
+
+</style>
+<style>html.sg-locked body{visibility:hidden}</style>
+<script>document.documentElement.classList.add("sg-locked")</script>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/sanga-auth.js"></script>
+<script src="/js/admin-session.js"></script>
+
+<div class="wrap">
+  <div class="topbar">
+    <a class="badge-wrap" href="/" title="Sangha home">
+      <div class="badge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+      </div>
+      <div class="badge-label">Sangha</div>
+    </a>
+  </div>
+
+  <div id="statusBanner"></div>
+
+  <div class="photo"><img id="eventImg" src="" alt="Experience"></div>
+
+  <div id="catChip"></div>
+  <h1 class="title" id="eventTitle">Experience</h1>
+
+  <div class="host-row">
+    <div class="host-avatar" id="hostAvatar">?</div>
+    <div class="host-info">
+      <div class="label">Hosted by</div>
+      <div class="name" id="hostName">—</div>
+      <div class="reply-note" id="hostReplyNote">Usually replies within a few hours</div>
+    </div>
+  </div>
+
+  <div class="meta-grid" id="metaGrid"></div>
+
+  <div class="section">
+    <div class="section-title">About this experience</div>
+    <div class="desc-text" id="eventDesc"></div>
+  </div>
+
+  <div class="section" id="includesSection">
+    <div class="section-title">What's included</div>
+    <div class="includes-grid" id="includesGrid"></div>
+  </div>
+
+  <div class="section" id="supportingFilesSection">
+    <div class="section-title">Supporting files</div>
+    <div class="sf-grid" id="supportingFilesGrid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Location</div>
+    <div class="logistics-card">
+      <div class="logistics-row" id="locationRow"></div>
+      <div class="logistics-row" id="cancellationRow"></div>
+    </div>
+  </div>
+
+  <div class="section share-section" id="shareSection">
+    <div class="section-title">Share these details</div>
+    <div class="share-row">
+      <button class="share-btn" id="shareEmail" type="button">
+        <span class="share-icon email">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+        </span>
+        <span class="share-label">Email</span>
+      </button>
+      <button class="share-btn" id="shareWhatsapp" type="button">
+        <span class="share-icon whatsapp">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H12l-4.5 1.5 1.2-3.6A8.5 8.5 0 1 1 21 11.5z"></path></svg>
+        </span>
+        <span class="share-label">WhatsApp</span>
+      </button>
+      <button class="share-btn" id="shareSms" type="button">
+        <span class="share-icon sms">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </span>
+        <span class="share-label">Message</span>
+      </button>
+      <button class="share-btn" id="shareCopyLink" type="button">
+        <span class="share-icon copylink">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+        </span>
+        <span class="share-label">Copy link</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="actions" id="actionsRow">
+    <button class="action-btn primary" id="bookBtn" type="button" style="display:none;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="8 12 11 15 16 9"></polyline></svg>
+      <span id="bookLabel">Book</span>
+    </button>
+    <button class="action-btn secondary" id="msgHostBtn2">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      Message host
+    </button>
+    <div style="position:relative;flex:1;min-width:160px;">
+      <button class="action-btn primary" id="addCalBtn" style="width:100%;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        Add to calendar
+      </button>
+      <div class="cal-menu hidden" id="calMenu">
+        <a href="#" id="calGoogle" target="_blank" rel="noopener">Google Calendar</a>
+        <a href="#" id="calOutlook" target="_blank" rel="noopener">Outlook Calendar</a>
+        <button type="button" id="calIcs">Download .ics (Apple / other)</button>
+      </div>
+    </div>
+  </div>
+  <div id="bookNote" class="reply-note" style="display:none;margin:-2px 0 10px;font-size:12px;opacity:.65;line-height:1.5;"></div>
+
+  <div class="compose-panel" id="composePanel">
+    <div class="compose-title" id="composeTitle">Message host</div>
+    <div class="compose-sub" id="composeSub"></div>
+    <div id="composeBody">
+      <textarea class="compose-textarea" id="composeText" placeholder="Hi, I had a question about..."></textarea>
+      <div class="compose-send-row">
+        <button class="btn-send" id="composeSend">Send message</button>
+        <button class="btn-cancel-msg" id="composeCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="cal-toast" id="calToast">Added ✓</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+
+const DEFAULTS = {
+  id: "",
+  status: "upcoming", // "upcoming" | "past"
+  title: "No event selected",
+  host: "—",
+  category: "—",
+  city: "—",
+  isoStart: "",
+  isoEnd: "",
+  dateDisplay: "—",
+  timeDisplay: "—",
+  duration: "—",
+  price: "0",
+  priceMode: "perPerson",
+  groupSize: "—",
+  locationType: "person", // "person" | "online"
+  address: "",
+  onlineLink: "",
+  img: "",
+  desc: "This page shows a real event's details when opened with a valid event id — for example, from a link in the host dashboard.",
+  includes: JSON.stringify([]),
+  supportingFiles: JSON.stringify([]),
+  cancellation: "",
+  attendedOn: ""
+};
+
+function p(key){
+  const v = params.get(key);
+  return (v !== null && v !== '') ? v : DEFAULTS[key];
+}
+
+// If this id belongs to an event actually published in /events/create_event.html,
+// pull its real details in instead of the hardcoded demo defaults.
+(function applyLiveEventDefaults(){
+  const idParam = params.get('id');
+  if(!idParam || !window.SanghaData) return;
+  const ev = SanghaData.getEvent(idParam);
+  if(!ev) return;
+  Object.assign(DEFAULTS, {
+    id: ev.id,
+    status: 'upcoming',
+    title: ev.title || DEFAULTS.title,
+    host: ev.hostName || DEFAULTS.host,
+    category: ev.category || DEFAULTS.category,
+    city: ev.city || DEFAULTS.city,
+    duration: ev.duration || DEFAULTS.duration,
+    price: String(ev.isFree ? 0 : (ev.price || DEFAULTS.price)),
+    priceMode: ev.priceMode || 'perPerson',
+    groupSize: ev.audience === 'group'
+      ? `Up to ${ev.maxSize || '—'} guests`
+      : `Up to ${ev.maxCount || '—'} guests`,
+    locationType: ev.locationType || DEFAULTS.locationType,
+    address: ev.exactAddress || DEFAULTS.address,
+    onlineLink: ev.onlineLink || DEFAULTS.onlineLink,
+    img: ev.image || DEFAULTS.img,
+    desc: ev.desc || DEFAULTS.desc,
+    includes: JSON.stringify(ev.includes && ev.includes.length ? ev.includes : JSON.parse(DEFAULTS.includes)),
+    cancellation: ev.cancellation || DEFAULTS.cancellation,
+  });
+})();
+
+const isReadonly = true;   // admin site: always the read-only reviewer view
+// The real event, if this browser has it (needed to offer booking).
+const liveEvent = (window.SanghaData && params.get('id')) ? SanghaData.getEvent(params.get('id')) : null;
+
+const data = {
+  id: p('id'),
+  status: p('status'),
+  title: p('title'),
+  host: p('host'),
+  category: p('category'),
+  city: p('city'),
+  isoStart: p('isoStart'),
+  isoEnd: p('isoEnd'),
+  dateDisplay: p('dateDisplay'),
+  timeDisplay: p('timeDisplay'),
+  duration: p('duration'),
+  price: p('price'),
+  priceMode: p('priceMode'),
+  groupSize: p('groupSize'),
+  locationType: p('locationType'),
+  address: p('address'),
+  onlineLink: p('onlineLink'),
+  img: p('img'),
+  desc: p('desc'),
+  includes: (() => { try { return JSON.parse(p('includes')); } catch(e){ return []; } })(),
+  supportingFiles: (() => { try { return JSON.parse(p('supportingFiles')); } catch(e){ return []; } })(),
+  cancellation: p('cancellation'),
+  attendedOn: p('attendedOn')
+};
+
+document.title = data.title + " — Sangha";
+
+/* ---------- icons ---------- */
+function pinIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>'; }
+function calIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>'; }
+function clockIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>'; }
+function tagIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13 21l-9-9V4h8l8.59 8.59a2 2 0 0 1 0 2.82z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg>'; }
+function peopleIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>'; }
+function checkIcon(){ return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>'; }
+function checkCircleIcon(){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="8 12 11 15 16 9"></polyline></svg>'; }
+function historyIcon(){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>'; }
+function linkIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>'; }
+function noteIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>'; }
+
+/* ---------- render ---------- */
+const isPast = data.status === 'past';
+
+// "You're going — booking confirmed" is shown only once the guest is registered
+// (opened with ?registered=1, or after tapping Book). Otherwise it stays hidden.
+const isReviewer = true;   // admin site: always the reviewer view (no Book, no message host)
+let isRegistered = params.get('registered') === '1';
+
+function renderStatusBanner(){
+  const el = document.getElementById('statusBanner');
+  if(!el) return;
+  if(isPast){
+    el.innerHTML = `<div class="status-banner past">${historyIcon()} Attended ${data.attendedOn || data.dateDisplay}</div>`;
+  } else if(isRegistered){
+    el.innerHTML = `<div class="status-banner upcoming">${checkCircleIcon()} You're going — booking confirmed</div>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+renderStatusBanner();
+
+document.getElementById('eventImg').src = data.img;
+document.getElementById('eventImg').alt = data.title;
+document.getElementById('catChip').innerHTML = data.category ? `<span class="cat-chip">${data.category}</span>` : '';
+document.getElementById('eventTitle').textContent = data.title;
+
+document.getElementById('hostAvatar').textContent = (data.host || '?').trim().charAt(0).toUpperCase();
+document.getElementById('hostName').textContent = data.host;
+
+const priceText = (parseFloat(data.price) > 0) ? `$${data.price} ${data.priceMode === 'total' ? '/ group total' : '/ person'}` : 'Free';
+
+document.getElementById('metaGrid').innerHTML = `
+  <div class="meta-item">${pinIcon()}<div><div class="meta-label">Location</div><div class="meta-val">${data.city}</div></div></div>
+  <div class="meta-item">${calIcon()}<div><div class="meta-label">Date</div><div class="meta-val">${data.dateDisplay}</div></div></div>
+  <div class="meta-item">${clockIcon()}<div><div class="meta-label">Time & duration</div><div class="meta-val">${data.timeDisplay ? data.timeDisplay + ' · ' : ''}${data.duration}</div></div></div>
+  <div class="meta-item">${tagIcon()}<div><div class="meta-label">Price</div><div class="meta-val">${priceText}</div></div></div>
+  ${data.groupSize ? `<div class="meta-item">${peopleIcon()}<div><div class="meta-label">Group size</div><div class="meta-val">${data.groupSize}</div></div></div>` : ''}
+`;
+
+document.getElementById('eventDesc').textContent = data.desc;
+
+const includesGrid = document.getElementById('includesGrid');
+if(data.includes && data.includes.length){
+  includesGrid.innerHTML = data.includes.map(i => `<div>${checkIcon()} ${i}</div>`).join('');
+} else {
+  document.getElementById('includesSection').style.display = 'none';
+}
+
+function fileIcon(){ return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>'; }
+
+const sfGrid = document.getElementById('supportingFilesGrid');
+if(data.supportingFiles && data.supportingFiles.length){
+  sfGrid.innerHTML = data.supportingFiles.map(f => {
+    const thumb = f.type === 'image'
+      ? `<img src="${f.url}" alt="${f.name}">`
+      : `<div class="sf-generic-icon">${fileIcon()}</div>`;
+    return `<a class="sf-card" href="${f.url}" target="_blank" rel="noopener">
+      ${thumb}
+      <div><div class="sf-name">${f.name}</div><div class="sf-view">View</div></div>
+    </a>`;
+  }).join('');
+} else {
+  document.getElementById('supportingFilesSection').style.display = 'none';
+}
+
+document.getElementById('locationRow').innerHTML = data.locationType === 'online'
+  ? `${linkIcon()}<div><div class="llabel">Online</div><div>Joining link: ${data.onlineLink ? `<a class="link-val" href="${data.onlineLink}" target="_blank" rel="noopener">${data.onlineLink}</a>` : 'will be shared by the host closer to the date.'}</div></div>`
+  : `${pinIcon()}<div><div class="llabel">Meeting point</div><div>${data.address}</div></div>`;
+
+document.getElementById('cancellationRow').innerHTML = `${noteIcon()}<div><div class="llabel">Cancellation policy</div><div class="cancel-text">${data.cancellation || 'No cancellation policy was provided by the host.'}</div></div>`;
+
+/* ---------- add to calendar ---------- */
+function toIcsDate(iso){
+  // iso like 2027-05-09T18:00:00 -> 20270509T180000
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return null;
+  const pad = n => String(n).padStart(2,'0');
+  return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + 'Z';
+}
+function toGoogleDate(iso){
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return null;
+  const pad = n => String(n).padStart(2,'0');
+  return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + 'Z';
+}
+
+const startIcs = toIcsDate(data.isoStart);
+const endIcs = toIcsDate(data.isoEnd) || startIcs;
+const locationText = data.locationType === 'online' ? (data.onlineLink || 'Online') : (data.address || data.city);
+
+const calBtn = document.getElementById('addCalBtn');
+const calMenu = document.getElementById('calMenu');
+calBtn.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  calMenu.classList.toggle('hidden');
+});
+document.addEventListener('click', () => calMenu.classList.add('hidden'));
+calMenu.addEventListener('click', ev => ev.stopPropagation());
+
+function showCalToast(msg){
+  const t = document.getElementById('calToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showCalToast._t);
+  showCalToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+const googleUrl = startIcs
+  ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(data.title)}&dates=${startIcs}/${endIcs}&details=${encodeURIComponent('Hosted by ' + data.host + '. ' + data.desc)}&location=${encodeURIComponent(locationText)}`
+  : '#';
+document.getElementById('calGoogle').href = googleUrl;
+
+const outlookUrl = data.isoStart
+  ? `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(data.title)}&startdt=${encodeURIComponent(new Date(data.isoStart).toISOString())}&enddt=${encodeURIComponent(new Date(data.isoEnd || data.isoStart).toISOString())}&body=${encodeURIComponent('Hosted by ' + data.host + '. ' + data.desc)}&location=${encodeURIComponent(locationText)}`
+  : '#';
+document.getElementById('calOutlook').href = outlookUrl;
+
+document.getElementById('calGoogle').addEventListener('click', () => { calMenu.classList.add('hidden'); showCalToast('Opening Google Calendar…'); });
+document.getElementById('calOutlook').addEventListener('click', () => { calMenu.classList.add('hidden'); showCalToast('Opening Outlook Calendar…'); });
+
+document.getElementById('calIcs').addEventListener('click', () => {
+  calMenu.classList.add('hidden');
+  const now = toIcsDate(new Date().toISOString()) || '';
+  const icsBody = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Sangha//Experience//EN',
+    'BEGIN:VEVENT',
+    'UID:' + data.id + '@sangha.app',
+    'DTSTAMP:' + now,
+    startIcs ? ('DTSTART:' + startIcs) : '',
+    endIcs ? ('DTEND:' + endIcs) : '',
+    'SUMMARY:' + data.title.replace(/\n/g,' '),
+    'DESCRIPTION:' + ('Hosted by ' + data.host + '. ' + data.desc).replace(/\n/g,' '),
+    'LOCATION:' + locationText.replace(/\n/g,' '),
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].filter(Boolean).join('\r\n');
+
+  const blob = new Blob([icsBody], {type: 'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = data.title.replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '.ics';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showCalToast('Calendar file downloaded ✓');
+});
+
+/* ---------- share ---------- */
+function buildShareText(){
+  const lines = [];
+  lines.push(data.title);
+  lines.push('Hosted by ' + data.host);
+  lines.push('');
+  lines.push('When: ' + data.dateDisplay + (data.timeDisplay ? ' · ' + data.timeDisplay : ''));
+  lines.push('Duration: ' + data.duration);
+  lines.push('Where: ' + (data.locationType === 'online' ? (data.onlineLink || 'Online — link shared by host closer to the date') : (data.address || data.city)));
+  lines.push('Price: ' + priceText);
+  if(data.groupSize) lines.push('Group size: ' + data.groupSize);
+  lines.push('');
+  lines.push('About:');
+  lines.push(data.desc);
+  if(data.includes && data.includes.length){
+    lines.push('');
+    lines.push("What's included:");
+    data.includes.forEach(i => lines.push('- ' + i));
+  }
+  if(data.cancellation){
+    lines.push('');
+    lines.push('Cancellation policy:');
+    lines.push(data.cancellation);
+  }
+  return lines.join('\n');
+}
+
+document.getElementById('shareEmail').addEventListener('click', () => {
+  const subject = 'Experience details: ' + data.title;
+  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildShareText())}`;
+});
+
+document.getElementById('shareWhatsapp').addEventListener('click', () => {
+  window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText())}`, '_blank', 'noopener');
+});
+
+document.getElementById('shareSms').addEventListener('click', () => {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const body = encodeURIComponent(buildShareText());
+  window.location.href = isIOS ? `sms:&body=${body}` : `sms:?body=${body}`;
+});
+
+function buildReadonlyUrl(){
+  const url = new URL(window.location.href);
+  url.searchParams.set('readonly','1');
+  return url.toString();
+}
+
+document.getElementById('shareCopyLink').addEventListener('click', async () => {
+  const link = buildReadonlyUrl();
+  try{
+    await navigator.clipboard.writeText(link);
+    showCalToast('Link copied ✓');
+  } catch(err){
+    const ta = document.createElement('textarea');
+    ta.value = link;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); showCalToast('Link copied ✓'); }
+    catch(err2){ showCalToast('Could not copy — copy the address bar instead'); }
+    document.body.removeChild(ta);
+  }
+});
+
+/* ---------- message host ---------- */
+const composePanel = document.getElementById('composePanel');
+document.getElementById('composeTitle').textContent = `Message ${data.host}`;
+document.getElementById('composeSub').textContent = `About "${data.title}"`;
+
+function openCompose(){
+  composePanel.classList.add('open');
+  composePanel.scrollIntoView({behavior:'smooth', block:'center'});
+  const ta = document.getElementById('composeText');
+  if(ta) ta.focus();
+}
+function closeCompose(){
+  composePanel.classList.remove('open');
+}
+
+document.getElementById('msgHostBtn2').addEventListener('click', openCompose);
+document.getElementById('composeCancel').addEventListener('click', closeCompose);
+document.getElementById('composeSend').addEventListener('click', () => {
+  const text = document.getElementById('composeText').value.trim();
+  if(!text) return;
+  document.getElementById('composeBody').innerHTML = `
+    <div class="compose-sent">
+      <div class="check">${checkIcon().replace('width="14" height="14"','width="16" height="16"')}</div>
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:4px;">Message sent ✓</div>
+      <div style="font-size:12.5px;opacity:.65;">${data.host} will see this in their inbox and usually replies within a few hours.</div>
+    </div>
+  `;
+});
+
+/* ---------- book ----------
+   This page is for someone looking at an event that ISN'T theirs — including a visitor who
+   isn't logged in. (Your own event opens on /events/self_event_detail_view.html.)
+     - hasn't booked       -> a Book button that starts the real booking
+     - has already booked  -> the "You're going" banner, no Book button
+   Book is never shown for past events, shared read-only links or reviewers.
+   Booking itself: single events -> /booking/sanga_booking.html; group events -> the group-booking
+   options on the home page (/sanga_home.html?book=<id>). */
+const bookBtn = document.getElementById('bookBtn');
+const bookNote = document.getElementById('bookNote');
+
+(async function decideBook(){
+  if(!bookBtn) return;
+  const appMode = !!window.SanghaData;            // false on a bare copy of this page (e.g. your own computer)
+  let session = null;
+  try{ if(window.SanghaAuth){ await SanghaAuth.whenReady(); session = SanghaAuth.getSession(); } }
+  catch(e){ /* not logged in / auth unavailable: treat as a visitor */ }
+
+  // Opened your own event from a pasted link? Send you to the owner page.
+  if(session && liveEvent && liveEvent.hostId && liveEvent.hostId === session.id){
+    window.location.replace('/events/self_event_detail_view.html?id=' + encodeURIComponent(liveEvent.id));
+    return;
+  }
+
+  // Already booked on this account? Then show the confirmed banner instead of Book.
+  try{
+    if(!isRegistered && session && appMode && data.id){
+      if(SanghaData.getRegistrationsByUser(session.id).some(r => String(r.eventId) === String(data.id))){
+        isRegistered = true;
+        renderStatusBanner();
+      }
+    }
+  }catch(e){ /* no bookings found */ }
+
+  if(isPast || isRegistered || isReadonly || isReviewer){ bookBtn.remove(); return; }
+
+  if(!appMode){
+    // A bare copy with no data layer (nothing real to book): keep the original placeholder —
+    // tapping Book just marks the guest as registered on this page.
+    bookBtn.style.display = '';
+    bookBtn.addEventListener('click', () => {
+      isRegistered = true;
+      renderStatusBanner();
+      bookBtn.remove();
+      showCalToast('Booking confirmed \u2713');
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+    return;
+  }
+
+  if(!liveEvent){ bookBtn.remove(); return; }     // an event this browser doesn't have: nothing to book
+
+  const isGroup = liveEvent.audience === 'group';
+  const isRequest = liveEvent.bookingType === 'request';
+  let href, label, note;
+  if(isGroup){
+    href = '/sanga_home.html?book=' + encodeURIComponent(liveEvent.id);
+    label = 'Book for your group';
+    note = 'Choose to pay for everyone, or split the cost with your group.';
+  } else {
+    const max = Math.max(1, parseInt(liveEvent.maxCount, 10) || 8);
+    href = '/booking/sanga_booking.html?id=' + encodeURIComponent(liveEvent.id) + '&minGuests=1&maxGuests=' + max;
+    label = isRequest ? 'Request to book' : 'Book now';
+    note = isRequest
+      ? "You won't be charged yet — the host confirms availability first."
+      : "Instant booking — you'll fill in your details and pay right away, and your spot is confirmed immediately.";
+  }
+  document.getElementById('bookLabel').textContent = label;
+  bookBtn.style.display = '';
+  bookBtn.addEventListener('click', () => { window.location.href = href; });
+  bookNote.textContent = note;
+  bookNote.style.display = 'block';
+})();
+
+/* ---------- read-only mode (opened from a shared "Copy link") ---------- */
+if(isReadonly){
+  document.getElementById('hostReplyNote')?.remove();
+  document.getElementById('msgHostBtn2')?.remove();
+  document.getElementById('composePanel')?.remove();
+  document.getElementById('shareSection')?.remove();
+  const actionsRow = document.getElementById('actionsRow');
+  if(actionsRow){
+    const calWrap = actionsRow.querySelector('div');
+    if(calWrap) calWrap.style.flex = '1 1 100%';
+  }
+}
+
+/* ---------- reviewer mode (opened from the admin review queue) ---------- */
+// The "You're going — booking confirmed" banner is for a guest who has booked.
+// A reviewer hasn't booked anything, so links from the review queue add ?review=1
+// and the banner is removed. Without ?review=1 nothing changes for anyone.
+if(isReviewer){
+  document.getElementById('statusBanner')?.remove();
+}
+
+/* ---------- host profile link ---------- */
+// The host's avatar and name link to their profile (/profile/user_profile_view.html?id=<host>).
+// A link that includes ?hostProfile=<address> can still point somewhere else instead.
+(function(){
+  const override = params.get('hostProfile');
+  const realHost = '/host_profile_view.html?host=' + encodeURIComponent((document.getElementById('hostName') || {}).textContent || '');
+  const url = (override && !/^\s*(javascript|data|vbscript):/i.test(override))
+    ? override
+    : realHost;
+  const avatar = document.getElementById('hostAvatar');
+  const nameEl = document.getElementById('hostName');
+  if(!avatar || !nameEl) return;
+  function link(){ const a = document.createElement('a'); a.setAttribute('href', url); a.target = '_blank'; a.rel = 'noopener'; a.title = 'View host profile'; return a; }
+  const aAvatar = link(); aAvatar.style.cssText = 'display:flex;flex-shrink:0;';
+  avatar.parentNode.insertBefore(aAvatar, avatar); aAvatar.appendChild(avatar);
+  const aName = link(); aName.style.cssText = 'color:inherit;text-decoration:underline;'; aName.textContent = nameEl.textContent;
+  nameEl.textContent = ''; nameEl.appendChild(aName);
+  const hint = document.createElement('div'); hint.className = 'reply-note';
+  const aHint = link(); aHint.style.cssText = 'color:inherit;text-decoration:underline;'; aHint.textContent = 'View host profile \u2192';
+  hint.appendChild(aHint); nameEl.parentNode.appendChild(hint);
+})();
+</script>
+</body>
+</html>

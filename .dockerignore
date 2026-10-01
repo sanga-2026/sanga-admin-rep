@@ -1,0 +1,6 @@
+node_modules
+main-repo-changes
+.git
+*.md
+.gcloudignore
+.gitignore

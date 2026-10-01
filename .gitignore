@@ -1,0 +1,10 @@
+# Never commit these
+node_modules/
+.env
+.env.*
+*.log
+.DS_Store
+
+# Secrets: the Claude API key is set on the Cloud Run service (a variable),
+# never written into a file. If you ever create a file holding keys, list it here.
+secrets.*

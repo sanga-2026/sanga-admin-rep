@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sanga Admin — Log in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#0D0D0D; --cream:#FFFFFF; --card:#FFFDF8; --rust:#F2A94E; --sage:#FBE3B8; --line:#E4E4E4; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:'Lato',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;}
+  input{font-family:inherit;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:34px 30px;max-width:400px;width:100%;}
+  .badge{width:44px;height:44px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;}
+  .badge svg{stroke:var(--rust);}
+  .title{font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;text-align:center;margin-bottom:6px;}
+  .sub{font-size:13px;opacity:.65;text-align:center;line-height:1.5;margin-bottom:24px;}
+  .reason-banner{background:var(--sage);border:1px solid var(--rust);border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:20px;text-align:center;line-height:1.5;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;}
+  .field input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:13.5px;color:var(--ink);outline:none;letter-spacing:.02em;}
+  .field input:focus{border-color:var(--rust);}
+  .phone-row{display:flex;gap:8px;}
+  .phone-row select{flex:0 0 112px;padding:12px 8px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:13px;color:var(--ink);outline:none;font-family:inherit;}
+  .phone-row select:focus{border-color:var(--rust);}
+  .phone-row input{flex:1;min-width:0;}
+  .submit-btn{width:100%;padding:14px;border-radius:12px;background:var(--rust);color:#fff;font-weight:700;font-size:14.5px;border:none;margin-top:4px;}
+  .submit-btn:disabled{opacity:.6;}
+  .submit-btn:hover:not(:disabled){opacity:.92;}
+  .error-text{color:#C0392B;font-size:12px;margin:-6px 0 12px;display:none;}
+  .error-text.show{display:block;}
+  .back-link{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;opacity:.65;justify-content:center;margin-top:22px;}
+  .back-link:hover{opacity:1;}
+  .back-link svg{stroke:var(--rust);flex-shrink:0;}
+  #recaptchaHolder{height:0;overflow:hidden;}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/sanga-auth.js"></script>
+
+<div class="card">
+  <div class="badge">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+  </div>
+  <div class="title" id="pageTitle">Log in</div>
+  <div class="sub" id="pageSub">We'll text you a one-time code.</div>
+  <div class="reason-banner" id="reasonBanner" style="display:none;"></div>
+
+  <div id="formArea"></div>
+  <div id="recaptchaHolder"></div>
+
+</div>
+
+<script>
+// Common countries, sorted alphabetically by name. "dial" is the calling
+// code (no +), "iso" is used only as the option's key. Add more as needed —
+// this covers the countries most likely to sign up first.
+const COUNTRY_CODES = [
+  { iso:'AU', name:'Australia', dial:'61' },
+  { iso:'CA', name:'Canada', dial:'1' },
+  { iso:'FR', name:'France', dial:'33' },
+  { iso:'DE', name:'Germany', dial:'49' },
+  { iso:'IN', name:'India', dial:'91' },
+  { iso:'IE', name:'Ireland', dial:'353' },
+  { iso:'MX', name:'Mexico', dial:'52' },
+  { iso:'NZ', name:'New Zealand', dial:'64' },
+  { iso:'SG', name:'Singapore', dial:'65' },
+  { iso:'ZA', name:'South Africa', dial:'27' },
+  { iso:'AE', name:'UAE', dial:'971' },
+  { iso:'GB', name:'United Kingdom', dial:'44' },
+  { iso:'US', name:'United States', dial:'1' },
+];
+const DEFAULT_COUNTRY_ISO = 'US';
+
+const params = new URLSearchParams(window.location.search);
+// After login we go back to where the person was. Only a path on THIS site is accepted
+// (one leading "/", no spaces, no backslashes); anything else — another website, "//evil.com",
+// "javascript:" — falls back to the home page, so a crafted link can't send people elsewhere.
+function safeNext(raw){
+  return (raw && /^\/(?![\/\\])[^\x00-\x20\\]*$/.test(raw)) ? raw : '/admin_review.html';
+}
+const nextUrl = safeNext(params.get('next'));
+const reason = params.get('reason'); // 'host' | 'profile' | null
+
+if(reason === 'host'){
+  document.getElementById('reasonBanner').textContent = "You'll need an account to host an experience — it's how we keep your event, your guests, and your payouts tied to you.";
+  document.getElementById('reasonBanner').style.display = 'block';
+} else if(reason === 'admin'){
+  document.getElementById('reasonBanner').textContent = "Log in with your admin account to continue.";
+  document.getElementById('reasonBanner').style.display = 'block';
+} else if(reason === 'profile'){
+  document.getElementById('reasonBanner').textContent = "Log in to see your profile — your saved experiences, hosted events, and messages all live under your account.";
+  document.getElementById('reasonBanner').style.display = 'block';
+}
+
+let step = 'phone'; // phone -> [otp ->] setpin | checkpin
+let pendingIsNewUser = false;
+let showSecurityAlert = false; // set when the phone step finds 5+ known devices
+
+function setErr(msg){
+  const el = document.getElementById('formError');
+  if(!el) return;
+  if(!msg){ el.classList.remove('show'); return; }
+  el.textContent = msg; el.classList.add('show');
+}
+
+function render(){
+  const area = document.getElementById('formArea');
+  const errBlock = '<div class="error-text" id="formError"></div>';
+  const securityAlertBlock = showSecurityAlert
+    ? '<div class="reason-banner" style="background:#FDECEA;border-color:#C0392B;color:#C0392B;">Security alert: your account has been logged in from more than 5 devices.</div>'
+    : '';
+
+  if(step === 'phone'){
+    document.getElementById('pageTitle').textContent = 'Log in';
+    document.getElementById('pageSub').textContent = "Enter your phone number to continue.";
+    const countryOptions = COUNTRY_CODES.map(c =>
+      `<option value="${c.dial}" ${c.iso === DEFAULT_COUNTRY_ISO ? 'selected' : ''}>${c.name} (+${c.dial})</option>`
+    ).join('');
+    area.innerHTML = `
+      <div class="field">
+        <label>Phone number</label>
+        <div class="phone-row">
+          <select id="fCountry">${countryOptions}</select>
+          <input type="tel" inputmode="numeric" id="fPhone" placeholder="555 000 0000">
+        </div>
+      </div>
+      ${errBlock}
+      <button type="button" class="submit-btn" id="submitBtn">Continue</button>`;
+    document.getElementById('submitBtn').addEventListener('click', async ()=>{
+      const dial = document.getElementById('fCountry').value;
+      const localDigits = document.getElementById('fPhone').value.replace(/\D/g, '');
+      if(localDigits.length < 6 || localDigits.length > 14){ setErr('Enter a valid phone number.'); return; }
+      const phone = '+' + dial + localDigits;
+      setErr(''); const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.textContent = 'Checking…';
+      try{
+        if(SanghaAuth.isKnownDeviceForPhone(phone)){
+          // This browser already holds a live session for this exact
+          // phone number — Firebase itself remembers it, so there's
+          // nothing to verify. Skip straight to the PIN.
+          showSecurityAlert = false;
+          step = 'checkpin'; render();
+          return;
+        }
+        // Unrecognized device (or first time this browser has seen this
+        // number). Look up the account first, purely to know whether to
+        // show the "more than 5 devices" notice on the OTP screen — this
+        // does not affect whether OTP itself is required, since it always
+        // is for a device that isn't already signed in.
+        try {
+          const info = await SanghaAuth.checkPhoneDevice(phone);
+          showSecurityAlert = !!(info && info.accountExists && info.deviceCount >= 5);
+        } catch(e) {
+          showSecurityAlert = false; // non-fatal — just skip the notice if this lookup fails
+        }
+        btn.textContent = 'Sending…';
+        await SanghaAuth.sendOtp(phone, 'recaptchaHolder');
+        step = 'otp'; render();
+      }catch(e){
+        setErr(e.message || 'Could not send code — try again.');
+        btn.disabled = false; btn.textContent = 'Continue';
+      }
+    });
+    return;
+  }
+
+  if(step === 'otp'){
+    document.getElementById('pageTitle').textContent = 'Enter the code';
+    document.getElementById('pageSub').textContent = 'Check your texts for a 6-digit code.';
+    area.innerHTML = `
+      ${securityAlertBlock}
+      <div class="field"><label>SMS code</label><input type="text" inputmode="numeric" maxlength="6" id="fCode" placeholder="123456"></div>
+      ${errBlock}
+      <button type="button" class="submit-btn" id="submitBtn">Verify</button>`;
+    document.getElementById('submitBtn').addEventListener('click', async ()=>{
+      const code = document.getElementById('fCode').value.trim();
+      if(!/^\d{6}$/.test(code)){ setErr('Enter the 6-digit code.'); return; }
+      setErr(''); const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.textContent = 'Verifying…';
+      try{
+        const { isNewUser } = await SanghaAuth.verifyOtp(code);
+        pendingIsNewUser = isNewUser;
+        step = isNewUser ? 'setpin' : 'checkpin'; render();
+      }catch(e){
+        setErr('That code was incorrect or expired.');
+        btn.disabled = false; btn.textContent = 'Verify';
+      }
+    });
+    return;
+  }
+
+  if(step === 'setpin'){
+    document.getElementById('pageTitle').textContent = 'Set up your PIN';
+    document.getElementById('pageSub').textContent = "Choose a 6-digit PIN — you'll use it to log in next time.";
+    area.innerHTML = `
+      <div class="field"><label>Your name</label><input type="text" id="fName" placeholder="Your name"></div>
+      <div class="field"><label>Create a 6-digit PIN</label><input type="password" inputmode="numeric" maxlength="6" id="fPin" placeholder="••••••"></div>
+      ${errBlock}
+      <button type="button" class="submit-btn" id="submitBtn">Finish</button>`;
+    document.getElementById('submitBtn').addEventListener('click', async ()=>{
+      const name = document.getElementById('fName').value.trim();
+      const pin = document.getElementById('fPin').value.trim();
+      if(!name){ setErr('Please add your name.'); return; }
+      if(!/^\d{6}$/.test(pin)){ setErr('PIN must be exactly 6 digits.'); return; }
+      setErr(''); const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.textContent = 'Saving…';
+      try{
+        await SanghaAuth.setPin(pin, name);
+        step = 'success'; render();
+      }catch(e){
+        setErr(e.message || 'Could not save your PIN.');
+        btn.disabled = false; btn.textContent = 'Finish';
+      }
+    });
+    return;
+  }
+
+  if(step === 'success'){
+    document.getElementById('pageTitle').textContent = "You're all set!";
+    document.getElementById('pageSub').textContent = "Your account is ready. Next time, just enter your PIN to log in.";
+    area.innerHTML = `
+      <button type="button" class="submit-btn" id="goProfileBtn">Continue to admin</button>`;
+    document.getElementById('goProfileBtn').addEventListener('click', ()=>{
+      window.location.href = nextUrl;
+    });
+    return;
+  }
+
+  if(step === 'checkpin'){
+    document.getElementById('pageTitle').textContent = 'Enter your PIN';
+    document.getElementById('pageSub').textContent = 'Confirm your 6-digit PIN to finish logging in.';
+    area.innerHTML = `
+      <div class="field"><label>PIN</label><input type="password" inputmode="numeric" maxlength="6" id="fPin" placeholder="••••••"></div>
+      ${errBlock}
+      <button type="button" class="submit-btn" id="submitBtn">Log in</button>`;
+    document.getElementById('submitBtn').addEventListener('click', async ()=>{
+      const pin = document.getElementById('fPin').value.trim();
+      if(!/^\d{6}$/.test(pin)){ setErr('Enter your 6-digit PIN.'); return; }
+      setErr(''); const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.textContent = 'Checking…';
+      try{
+        const session = await SanghaAuth.verifyPin(pin);
+        if(!session){ setErr('Incorrect PIN — try again.'); btn.disabled = false; btn.textContent = 'Log in'; return; }
+        btn.textContent = 'Logged in ✓';
+        window.location.href = nextUrl;
+      }catch(e){
+        setErr(e.message || 'Something went wrong.');
+        btn.disabled = false; btn.textContent = 'Log in';
+      }
+    });
+    return;
+  }
+}
+
+// Pressing Enter in any input field on this form submits it, same as
+// clicking the button — standard behavior most people expect, rather
+// than requiring an explicit click every step. One listener here covers
+// every step (phone, OTP, PIN) since the submit button's id is always
+// #submitBtn regardless of which step is currently rendered.
+document.getElementById('formArea').addEventListener('keydown', (ev)=>{
+  if(ev.key !== 'Enter') return;
+  const btn = document.getElementById('submitBtn');
+  if(btn && !btn.disabled) btn.click();
+});
+
+(async function init(){
+  await SanghaAuth.whenReady();
+  if(SanghaAuth.getSession()){
+    window.location.replace(nextUrl);
+    return;
+  }
+  // Phone number is always the first thing asked, on every device, every
+  // time — whether OTP is needed gets decided after that, once we know
+  // which phone number we're even looking at.
+  render();
+})();
+</script>
+</body>
+</html>
