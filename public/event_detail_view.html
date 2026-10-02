@@ -147,8 +147,6 @@
   .sf-view{font-size:11px;opacity:.55;margin-top:1px;}
 
 </style>
-<style>html.sg-locked body{visibility:hidden}</style>
-<script>document.documentElement.classList.add("sg-locked")</script>
 </head>
 <body>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -156,8 +154,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
 <script src="/js/firebase-config.js"></script>
+<script src="/js/sanga-data.js"></script>
 <script src="/js/sanga-auth.js"></script>
-<script src="/js/admin-session.js"></script>
 
 <div class="wrap">
   <div class="topbar">
@@ -167,6 +165,7 @@
       </div>
       <div class="badge-label">Sangha</div>
     </a>
+    <div data-sg-nav></div>
   </div>
 
   <div id="statusBanner"></div>
@@ -343,7 +342,7 @@ function p(key){
   });
 })();
 
-const isReadonly = true;   // admin site: always the read-only reviewer view
+const isReadonly = params.get('readonly') === '1';
 // The real event, if this browser has it (needed to offer booking).
 const liveEvent = (window.SanghaData && params.get('id')) ? SanghaData.getEvent(params.get('id')) : null;
 
@@ -392,7 +391,7 @@ const isPast = data.status === 'past';
 
 // "You're going — booking confirmed" is shown only once the guest is registered
 // (opened with ?registered=1, or after tapping Book). Otherwise it stays hidden.
-const isReviewer = true;   // admin site: always the reviewer view (no Book, no message host)
+const isReviewer = params.get('review') === '1';
 let isRegistered = params.get('registered') === '1';
 
 function renderStatusBanner(){
@@ -724,7 +723,7 @@ if(isReadonly){
 // The "You're going — booking confirmed" banner is for a guest who has booked.
 // A reviewer hasn't booked anything, so links from the review queue add ?review=1
 // and the banner is removed. Without ?review=1 nothing changes for anyone.
-if(isReviewer){
+if(params.get('review') === '1'){
   document.getElementById('statusBanner')?.remove();
 }
 
@@ -733,7 +732,9 @@ if(isReviewer){
 // A link that includes ?hostProfile=<address> can still point somewhere else instead.
 (function(){
   const override = params.get('hostProfile');
-  const realHost = '/host_profile_view.html?host=' + encodeURIComponent((document.getElementById('hostName') || {}).textContent || '');
+  const realHost = (liveEvent && liveEvent.hostId)
+    ? '/profile/user_profile_view.html?id=' + encodeURIComponent(liveEvent.hostId) + '&name=' + encodeURIComponent(liveEvent.hostName || '')
+    : '/profile/user_profile_view.html';
   const url = (override && !/^\s*(javascript|data|vbscript):/i.test(override))
     ? override
     : realHost;
@@ -750,5 +751,6 @@ if(isReviewer){
   hint.appendChild(aHint); nameEl.parentNode.appendChild(hint);
 })();
 </script>
+<script src="/js/sanga-nav.js"></script>
 </body>
 </html>

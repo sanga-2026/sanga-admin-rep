@@ -6,3 +6,4 @@
 - `firestore.rules` and the Cloud Functions live in the MAIN sanga repo; `main-repo-changes/` holds the versions this site needs.
 - The review queue's events and decisions are still sample data until events move into Firestore.
 - Never put API keys or secrets in any file. Work on a branch and open a pull request; never push to main.
+- `public/event_detail_view.html`, `js/firebase-config.js` and `js/sanga-auth.js` must stay IDENTICAL to the app repo's copies. `js/sanga-nav.js`, `js/sanga-data.js` and `login.html` share names with app files but are different on purpose: never overwrite them with the app's versions.

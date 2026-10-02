@@ -358,7 +358,10 @@ function renderUsers(){
     <div class="row">
       <div class="avatar">${initials(u.name)}</div>
       <div><div class="name">${esc(u.name)}${mains[u.id] ? '<span class="badge">Main admin</span>' : roles[u.id] ? '<span class="badge">Admin</span>' : ''}</div><div class="phone">${esc(u.phone)}</div></div>
-      ${(roles[u.id] || mains[u.id]) ? '' : `<button class="btn push" data-promote="${u.id}" type="button">Promote to admin</button>`}
+      <div class="push" style="display:flex;gap:12px;align-items:center;">
+        <a href="/host_profile_view.html?id=${encodeURIComponent(u.id)}&name=${encodeURIComponent(u.name)}" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:700;text-decoration:underline;">View profile</a>
+        ${(roles[u.id] || mains[u.id]) ? '' : `<button class="btn" data-promote="${u.id}" type="button">Promote to admin</button>`}
+      </div>
     </div>`).join('');
   el.querySelectorAll('[data-promote]').forEach(b => b.onclick = () => {
     roles[b.dataset.promote] = emptyScope(); syncRoles(); renderAll();

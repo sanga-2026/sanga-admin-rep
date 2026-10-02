@@ -143,12 +143,8 @@ const EVENTS = [
    copied-in values would override the real ones.) */
 const DETAIL_PAGE = 'event_detail_view.html';
 // Where clicking the host (on the details page) goes. Real events: pass ?hostId=<id>.
-const HOST_PROFILE_PAGE = 'host_profile_view.html';
-function hostProfileUrl(e){
-  const q = new URLSearchParams({ host: e.host });
-  if(e.hostId) q.set('hostId', e.hostId);
-  return HOST_PROFILE_PAGE + '?' + q.toString();
-}
+// A host's name opens the full profile for a MAIN admin and the privacy-filtered one for a normal admin.
+function hostProfileUrl(e){ return SanghaAdmin.profileUrl({ id: e.hostId, name: e.host }); }
 const USE_SAMPLE_DETAILS = true;
 function eventDetailUrl(e){
   const q = new URLSearchParams({ id: e.id, readonly: '1', review: '1' });

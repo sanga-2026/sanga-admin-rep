@@ -10,6 +10,17 @@
   var html = document.documentElement;
   var SanghaAdmin = window.SanghaAdmin = { admin: null, ready: null };
 
+  // Which profile page to open for someone: a MAIN admin gets the full profile (host_profile_view.html);
+  // a normal admin gets the privacy-filtered one the app shows (user_profile_view.html).
+  SanghaAdmin.profileUrl = function (o) {
+    o = o || {};
+    var main = !!(SanghaAdmin.admin && SanghaAdmin.admin.role === 'main');
+    var q = [];
+    if (o.id) q.push('id=' + encodeURIComponent(o.id));
+    if (o.name) q.push('name=' + encodeURIComponent(o.name));
+    return (main ? '/host_profile_view.html' : '/user_profile_view.html') + (q.length ? '?' + q.join('&') : '');
+  };
+
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function gate(inner) {
     var g = document.getElementById('sgGate');
