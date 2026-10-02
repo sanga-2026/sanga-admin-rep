@@ -74,6 +74,27 @@
       }
     };
     openPage();
+    // Full-access (main) admins get a round icon at the top right to jump between the review queue
+    // and Admin Settings. Normal admins never see it (they cannot open Admin Settings anyway).
+    var bar = document.querySelector('.userbar');
+    if (bar && isMain && !bar.querySelector('.sg-switch')) {
+      var here = window.location.pathname, target = null;
+      var GEAR = '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>';
+      var QUEUE = '<polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>';
+      if (/\/admin_review(\.html)?$/.test(here)) target = { href: '/admin_settings.html', title: 'Admin settings', icon: GEAR };
+      else if (/\/admin_settings(\.html)?$/.test(here)) target = { href: '/admin_review.html', title: 'Review queue', icon: QUEUE };
+      if (target) {
+        if (!document.getElementById('sgSwitchCss')) {
+          var st = document.createElement('style'); st.id = 'sgSwitchCss';
+          st.textContent = '.sg-switch{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid #E4E4E4;background:#FFFDF8;color:#0D0D0D;text-decoration:none;flex-shrink:0;}.sg-switch:hover{border-color:#F2A94E;}';
+          document.head.appendChild(st);
+        }
+        var sw = document.createElement('a');
+        sw.className = 'sg-switch'; sw.href = target.href; sw.title = target.title; sw.setAttribute('aria-label', target.title);
+        sw.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + target.icon + '</svg>';
+        bar.insertBefore(sw, bar.firstChild);
+      }
+    }
     var who = document.querySelector('.userbar .who');   // a small "Log out" under the name
     if (who) {
       var a = document.createElement('a'); a.href = '#'; a.textContent = 'Log out';
