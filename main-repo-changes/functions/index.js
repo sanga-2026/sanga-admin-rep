@@ -240,3 +240,62 @@ exports.getPublicProfile = onCall(async (request) => {
   }
   return out;
 });
+
+/* ------------------------------------------------------------------
+  adminGetProfile — the FULL profile, for the Sanga ADMIN site's main admins.
+
+  Returns everything the person wrote on their profile (including what they chose to hide from other
+  people) plus their privacy switches, so the page can mark what is hidden from others. It never
+  returns the phone number, PIN hash, lock-out counters, devices or email. Main admins only
+  (admins/<uid>.role == 'main'). EVERY look is recorded in the "adminAccessLog" collection (who looked,
+  at whom, when) BEFORE anything is returned: if the record cannot be written, nothing is returned.
+  Browsers cannot read or write adminAccessLog (the Firestore rules deny it); read it in the console.
+  Like the other callable functions it needs "Allow public access" in Cloud Run; the check is inside.
+------------------------------------------------------------------ */
+exports.adminGetProfile = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const me = await db.collection('admins').doc(uid).get();
+  if (!me.exists || me.data().role !== 'main') {
+    throw new HttpsError('permission-denied', 'Main admins only.');
+  }
+  const id = request.data && request.data.id;
+  if (typeof id !== 'string' || !id.trim() || id.length > 128 || id.includes('/')) {
+    throw new HttpsError('invalid-argument', 'A profile id is required.');
+  }
+  const target = id.trim();
+  const snap = await db.collection('users').doc(target).get();
+  if (!snap.exists) return { exists: false };
+
+  const d = snap.data() || {};
+  const p = (d.privacy && typeof d.privacy === 'object') ? d.privacy : {};
+  const privacy = {};
+  ['showProfile', 'showCity', 'allowMessages', 'showReservations'].forEach((k) => {
+    if (typeof p[k] === 'boolean') privacy[k] = p[k];
+  });
+  const loc = (d.location && typeof d.location === 'object')
+    ? { city: cleanStr(d.location.city, 80), state: cleanStr(d.location.state, 80), country: cleanStr(d.location.country, 80) }
+    : null;
+  const hasLoc = !!(loc && (loc.city || loc.state || loc.country));
+
+  await db.collection('adminAccessLog').add({
+    action: 'viewFullProfile', by: uid, byName: cleanStr(me.data().name, 120), target,
+    at: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const out = {
+    exists: true,
+    name: cleanStr(d.name, 120),
+    bio: cleanStr(d.bio, 2000),
+    intentionLabel: cleanStr(d.intentionLabel, 80),
+    intentionText: cleanStr(d.intentionText, 500),
+    interests: cleanList(d.interests, 50, 60),
+    practices: cleanList(d.practices, 50, 60),
+    privacy,
+    hidden: { profile: privacy.showProfile === false, city: privacy.showCity === false && hasLoc },
+  };
+  if (typeof d.avatarDataUrl === 'string' && d.avatarDataUrl.startsWith('data:image/') && d.avatarDataUrl.length < 400000) {
+    out.avatarDataUrl = d.avatarDataUrl;
+  }
+  if (hasLoc) out.location = loc;
+  return out;
+});

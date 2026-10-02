@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Full profile — Sanga Admin</title>
+<title>Profile — Sanga Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{ --bg:#FFFFFF; --card:#FFFDF8; --forest:#000; --rust:#F2A94E; --sage:#FBE3B8; --ink:#0D0D0D; --line:#E4E4E4; }
@@ -40,12 +40,6 @@
   .tags-frame{background:var(--forest);border:1px solid rgba(242,169,78,.55);border-radius:14px;padding:14px;display:flex;flex-wrap:wrap;gap:8px;}
   .tag{font-size:12.5px;padding:7px 14px;border-radius:999px;border:1px solid var(--rust);background:rgba(255,255,255,.06);color:#fff;}
   .loading, .private-note{text-align:center;opacity:.6;font-size:14px;padding:50px 20px;line-height:1.6;}
-
-  .fullbar{background:var(--sage);border:1px solid var(--rust);border-radius:10px;padding:9px 14px;font-size:12.5px;margin-bottom:14px;text-align:center;}
-  .hid-tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:#FDECEA;color:#C0392B;margin-left:8px;}
-  .priv-banner{background:#FDECEA;border:1px solid #C0392B;color:#C0392B;border-radius:12px;padding:12px 16px;margin-top:16px;font-size:13.5px;}
-  .priv-row{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
-  .priv-row:last-child{border-bottom:none;}
 </style>
 <style>html.sg-locked body{visibility:hidden}</style>
 <script>document.documentElement.classList.add("sg-locked")</script>
@@ -59,28 +53,46 @@
   <div id="loading" class="loading">Loading profile…</div>
 
   <div id="content" style="display:none;">
-    <div class="fullbar">Full profile · visible to main admins only · every look is recorded</div>
     <div class="hero">
       <div class="avatar" id="avatar">?</div>
       <div class="name" id="name">Member</div>
       <div class="loc" id="loc">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-        <span id="locText"></span><span class="hid-tag" id="locTag" style="display:none;">Hidden from others</span>
+        <span id="locText"></span>
       </div>
       <div class="verify-row" id="verifyRow"></div>
     </div>
-    <div class="priv-banner" id="privateBanner" style="display:none;">This person set their profile to private. Other people see only their name.</div>
 
-    <div class="section" id="aboutSection"><div class="section-title">About</div><div class="card" id="about"></div></div>
+    <div class="stats" id="stats">
+      <div class="stat"><b id="sJoined">0</b><span>Experiences joined</span></div>
+      <div class="stat"><b id="sCities">0</b><span>Cities</span></div>
+      <div class="stat"><b id="sHosted">0</b><span>Events hosted</span></div>
+    </div>
+
+    <div class="section" id="aboutSection">
+      <div class="section-title">About</div>
+      <div class="card" id="about"></div>
+    </div>
+
     <div class="section" id="intentionSection">
       <div class="intention-card">
         <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></div>
-        <div style="flex:1;"><div class="lbl" id="intentionLabel">Today's intention</div><div class="txt" id="intentionText"></div></div>
+        <div style="flex:1;">
+          <div class="lbl" id="intentionLabel">Today's intention</div>
+          <div class="txt" id="intentionText"></div>
+        </div>
       </div>
     </div>
-    <div class="section" id="interestsSection"><div class="section-title">Interests</div><div class="tags-frame" id="interests"></div></div>
-    <div class="section" id="loveSection"><div class="section-title">Love to learn</div><div class="tags-frame" id="loveTags"></div></div>
-    <div class="section show" id="privacySection"><div class="section-title">Privacy choices</div><div class="card" id="privacyList"></div></div>
+
+    <div class="section" id="interestsSection">
+      <div class="section-title">Interests</div>
+      <div class="tags-frame" id="interests"></div>
+    </div>
+
+    <div class="section" id="loveSection">
+      <div class="section-title">Love to learn</div>
+      <div class="tags-frame" id="loveTags"></div>
+    </div>
   </div>
 
   <div id="privateNote" class="private-note" style="display:none;"></div>
@@ -94,11 +106,26 @@
 <script src="/js/sanga-auth.js"></script>
 <script src="/js/admin-session.js"></script>
 <script>
-/* host_profile_view.html — the FULL profile, for MAIN admins only.
-   Open with ?id=<account id> (and optionally &name=<name> for a fallback).
-   The server (adminGetProfile) returns everything the person wrote, including what they chose to hide
-   from other people, and records every look. This page marks what is hidden from others.
-   A normal admin who opens this address is sent to user_profile_view.html (the privacy-filtered view). */
+/* =====================================================================
+   /profile/user_profile_view.html — how OTHER people see a member's profile.
+   (The person's own view + editing lives in /profile/user_profile.html.)
+
+   Open with ?id=<userId>  (or ?host=<name> as a fallback for the
+   sample/host links that don't have an id yet).
+
+   Two rules decide what shows here:
+     1. HIDE IF EMPTY — a section the person never filled in (no bio, no
+        "Love to learn", etc.) simply doesn't appear.
+     2. HIDE IF PRIVACY OFF — the person's Settings choices:
+          showProfile      off -> the whole profile is hidden
+          showCity         off -> city is hidden
+          allowMessages    off -> the Message button is hidden
+          showReservations off -> reservations are hidden (not shown here yet)
+
+   Profiles come from the getPublicProfile Cloud Function (server-side: it applies each person's privacy settings and never returns phone or PIN data). Until the full data migration, some
+   people may have little saved yet — that just means more empty sections,
+   which is fine (they're hidden).
+   ===================================================================== */
 const PRACTICE_LABELS = {
   vinyasa:"Vinyasa yoga", breathwork:"Breathwork", soundhealing:"Sound healing", forest:"Forest bathing",
   plantbased:"Plant-based cooking", restorative:"Restorative yoga", yin:"Yin yoga", ayurveda:"Ayurveda",
@@ -110,66 +137,94 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const params = new URLSearchParams(window.location.search);
 const initials = n => String(n||'').split(/\s+/).filter(Boolean).map(p=>p[0]).slice(0,2).join('').toUpperCase() || '?';
-const YESNO = (v, yes, no) => v === true ? yes : v === false ? no : 'Not set (default)';
 
-function showNote(msg){
-  $('loading').style.display = 'none'; $('content').style.display = 'none';
-  $('privateNote').style.display = 'block'; $('privateNote').textContent = msg;
+function showPrivate(msg){
+  $('loading').style.display = 'none';
+  $('content').style.display = 'none';
+  $('privateNote').style.display = 'block';
+  $('privateNote').textContent = msg;
 }
 
 function render(name, data){
-  data = data || {};
-  document.title = (name || 'Member') + ' — full profile — Sanga Admin';
+  const privacy = (data && data.privacy) || {};
+  // Privacy: if the person turned their profile off, show nothing.
+  // (Default is ON when they've never touched the setting.)
+  if(privacy.showProfile === false){ showPrivate('This member has set their profile to private.'); return; }
+
+  document.title = (name || 'Member') + ' — Sangha';
   $('name').textContent = name || 'Member';
-  if(data.avatarDataUrl){ $('avatar').innerHTML = `<img src="${esc(data.avatarDataUrl)}" alt="${esc(name)}">`; }
+
+  // avatar: photo if saved, else initials
+  if(data && data.avatarDataUrl){ $('avatar').innerHTML = `<img src="${esc(data.avatarDataUrl)}" alt="${esc(name)}">`; }
   else { $('avatar').textContent = initials(name); }
 
-  const loc = data.location || {};
-  const parts = [loc.city, loc.state, loc.country].filter(Boolean);
-  if(parts.length){
-    $('locText').textContent = parts.join(', '); $('loc').style.display = 'flex';
-    if(data.hidden && data.hidden.city) $('locTag').style.display = 'inline-block';
+  // city — only if saved AND allowed
+  const city = data && data.location && data.location.city;
+  if(city && privacy.showCity !== false){
+    const parts = [data.location.city, data.location.state, data.location.country].filter(Boolean);
+    $('locText').textContent = parts.join(', ');
+    $('loc').style.display = 'flex';
   }
+
+  // verification: phone is verified once they've logged in; ID verification is set up later.
   $('verifyRow').innerHTML = '<span class="v">Phone number · verified</span>';
-  if(data.hidden && data.hidden.profile) $('privateBanner').style.display = 'block';
 
-  if(data.bio && data.bio.trim()){ $('about').textContent = data.bio; $('aboutSection').classList.add('show'); }
-  if(data.intentionText && data.intentionText.trim()){
-    $('intentionLabel').textContent = data.intentionLabel || "Today's intention";
-    $('intentionText').textContent = '"' + data.intentionText + '"'; $('intentionSection').classList.add('show');
+
+  // stats — only if any are meaningful (hide when all zero / unknown)
+  const joined = (data && data.statJoined) || 0, cities = (data && data.statCities) || 0, hosted = (data && data.statHosted) || 0;
+  if(joined || cities || hosted){
+    $('sJoined').textContent = joined; $('sCities').textContent = cities; $('sHosted').textContent = hosted;
+    $('stats').classList.add('show');
   }
-  const interests = Array.isArray(data.interests) ? data.interests.filter(Boolean) : [];
-  if(interests.length){ $('interests').innerHTML = interests.map(i => `<span class="tag">${esc(i)}</span>`).join(''); $('interestsSection').classList.add('show'); }
-  const practices = Array.isArray(data.practices) ? data.practices : [];
-  if(practices.length){ $('loveTags').innerHTML = practices.map(id => `<span class="tag">${esc(PRACTICE_LABELS[id] || id)}</span>`).join(''); $('loveSection').classList.add('show'); }
 
-  const pv = data.privacy || {};
-  $('privacyList').innerHTML = [
-    ['Profile', YESNO(pv.showProfile, 'Visible to others', 'Private')],
-    ['City', YESNO(pv.showCity, 'Shown to others', 'Hidden from others')],
-    ['Messages', YESNO(pv.allowMessages, 'Allowed', 'Off')],
-  ].map(r => `<div class="priv-row"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('');
+  // About — hide if empty
+  if(data && data.bio && data.bio.trim()){ $('about').textContent = data.bio; $('aboutSection').classList.add('show'); }
 
-  $('loading').style.display = 'none'; $('content').style.display = 'block';
+  // Today's intention — hide if empty
+  if(data && data.intentionText && data.intentionText.trim()){
+    $('intentionLabel').textContent = data.intentionLabel || "Today's intention";
+    $('intentionText').textContent = '"' + data.intentionText + '"';
+    $('intentionSection').classList.add('show');
+  }
+
+  // Interests — hide if none
+  const interests = (data && Array.isArray(data.interests)) ? data.interests.filter(Boolean) : [];
+  if(interests.length){ $('interests').innerHTML = interests.map(i=>`<span class="tag">${esc(i)}</span>`).join(''); $('interestsSection').classList.add('show'); }
+
+  // Love to learn — hide if none
+  const practices = (data && Array.isArray(data.practices)) ? data.practices : [];
+  if(practices.length){
+    $('loveTags').innerHTML = practices.map(id => `<span class="tag">${esc(PRACTICE_LABELS[id] || id)}</span>`).join('');
+    $('loveSection').classList.add('show');
+  }
+
+  $('loading').style.display = 'none';
+  $('content').style.display = 'block';
 }
 
 (async function init(){
   const id = params.get('id');
   const fallbackName = (params.get('host') || params.get('name') || '').trim();
-  if(!(await SanghaAdmin.ready)) return;                       // signed in AND an admin
-  if(SanghaAdmin.admin.role !== 'main'){                      // only main admins get the full profile
-    window.location.replace('/user_profile_view.html' + window.location.search);
+
+  // No id (e.g. an older host link that only passes a name): show what we can.
+  if(!id){
+    if(fallbackName){ render(fallbackName, {}); }
+    else { showPrivate('No profile to show.'); }
     return;
   }
-  if(!id){ if(fallbackName) render(fallbackName, {}); else showNote('No profile to show.'); return; }
+
   try{
-    const res = await sanghaFunctions.httpsCallable('adminGetProfile')({ id });
+    if(!(await SanghaAdmin.ready)) return;   // signed in AND an admin
+    // The server reads the private record, applies THIS person's privacy settings and returns only
+    // what they allow others to see (never a phone number or PIN data).
+    const res = await sanghaFunctions.httpsCallable('getPublicProfile')({ id });
     const data = (res && res.data) || {};
     if(!data.exists){ render(fallbackName || 'Member', {}); return; }
     render(data.name || fallbackName || 'Member', data);
   }catch(e){
-    console.warn('Could not load the full profile:', e);
-    showNote("Couldn't load this profile. If it keeps happening, check that the adminGetProfile function is deployed and has public access.");
+    console.warn('Could not load this profile:', e);
+    // Don't leave a spinner stuck — show whatever name we have.
+    render(fallbackName || 'Member', {});
   }
 })();
 </script>
