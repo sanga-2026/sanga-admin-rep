@@ -47,3 +47,5 @@ Same file name, DIFFERENT content on purpose (never copy these across):
 - `js/sanga-nav.js`: the app draws Home + Profile icons; here it also runs the admin check and sends host links to the right profile page.
 - `js/sanga-data.js`: the app's real data layer; empty here.
 - `login.html`: sends admins to the review queue.
+- **Switching pages.** A full-access (main) admin sees a small round icon at the top right of the review queue (to Admin Settings) and of Admin Settings (back to the review queue). Normal admins never see it.
+- **Asking for admin access.** Anyone who logs in to the admin site with a normal Sanga account and is not an admin is asked for access automatically. They see "Your request for admin access is under review. It might take up to 24 hours for approval. Once your request is approved, you will be able to log in." Their request appears at the top of Admin Settings for a main admin, who approves or rejects it. Approving makes them an admin with no limits yet (set limits afterwards). No message is sent: the person logs in again once approved. The first main admin is still created by hand (see step 5).
