@@ -32,6 +32,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Requests for admin access. Created and decided ONLY by the Cloud Functions requestAdminAccess and
+    // adminDecideRequest. A person can read their own request; main admins can read them all.
+    match /adminRequests/{requestId} {
+      allow read: if signedIn() && (request.auth.uid == requestId || isMainAdmin());
+      allow write: if false;
+    }
+
     // Admin records. Everyone with a record can read their own; only a MAIN admin can read all,
     // create, change or remove them (that is how people are promoted and their limits set).
     // The very first main admin is created by hand in the Firebase console (see README).

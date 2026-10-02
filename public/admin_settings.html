@@ -105,6 +105,12 @@
       <div class="stat"><b id="statScoped">0</b><span>With a scope set</span></div>
     </div>
 
+    <div class="section" id="requestsSection">
+      <div class="sec-title">Admin requests <span id="reqCount" class="badge" style="display:none;"></span></div>
+      <div class="sec-sub">People who logged in to the admin site and asked for access. Approving makes them an admin with no limits yet; set their limits below. They simply log in again once approved.</div>
+      <div id="requestsList"></div>
+    </div>
+
     <div class="section">
       <div class="sec-title">Promote someone</div>
       <div class="sec-sub">Everyone who has signed up appears here.</div>
@@ -224,6 +230,7 @@ function showError(msg){
 }
 async function loadAll(){
   if(getCurrentAdmin().role !== 'main') return;
+  await loadRequests();
   try{
     const snap = await sanghaDb.collection('admins').get();
     roles = {}; mains = {}; adminMeta = {};
@@ -236,6 +243,64 @@ async function loadAll(){
     PEOPLE = ((res.data && res.data.users) || []).map(u => ({ id: u.id, name: u.name || u.phone || 'Unnamed', phone: u.phone || '' }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }catch(e){ showError("Couldn't load the people list: " + (e.message || e)); }
+}
+
+/* ---------------- admin requests ----------------
+   People who log in to the admin site without being admins are asked for access automatically
+   (requestAdminAccess). Here a MAIN admin approves or rejects them (adminDecideRequest). Approving
+   creates their admin record (no limits yet); they simply log in again once approved. */
+let REQUESTS = [];
+function showNotice(msg){
+  let bar = document.getElementById('noteBar');
+  if(!bar){ bar = document.createElement('div'); bar.id = 'noteBar';
+    bar.style.cssText = 'background:#E8F5E9;border:1px solid #2E7D32;color:#1B5E20;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;';
+    const w = document.querySelector('.wrap'); w.insertBefore(bar, w.firstChild.nextSibling || null); }
+  bar.textContent = msg; bar.style.display = 'block';
+}
+async function loadRequests(){
+  try{
+    const snap = await sanghaDb.collection('adminRequests').get();
+    const list = [];
+    snap.forEach(d => {
+      const v = d.data() || {};
+      if(v.status !== 'pending') return;
+      const t = v.requestedAt, ms = t && t.toMillis ? t.toMillis() : (t && t.seconds ? t.seconds * 1000 : 0);
+      list.push({ id: d.id, name: v.name || '', phone: v.phone || '', ms });
+    });
+    list.sort((a, b) => b.ms - a.ms);
+    REQUESTS = list;
+  }catch(e){ showError("Couldn't load admin requests: " + (e.message || e)); }
+}
+function whenText(ms){ try{ return new Date(ms).toLocaleString([], { dateStyle:'medium', timeStyle:'short' }); }catch(e){ return ''; } }
+function renderRequests(){
+  const el = document.getElementById('requestsList'), badge = document.getElementById('reqCount');
+  badge.style.display = REQUESTS.length ? 'inline-block' : 'none'; badge.textContent = REQUESTS.length;
+  if(!REQUESTS.length){ el.innerHTML = '<div class="empty">No requests waiting.</div>'; return; }
+  el.innerHTML = REQUESTS.map(r => `
+    <div class="row">
+      <div class="avatar">${initials(r.name || r.phone)}</div>
+      <div><div class="name">${esc(r.name || 'No name yet')}</div><div class="phone">${esc(r.phone)}${r.ms ? ' · ' + esc(whenText(r.ms)) : ''}</div></div>
+      <div class="push" style="display:flex;gap:8px;align-items:center;">
+        <button class="btn" data-req-approve="${esc(r.id)}" type="button">Approve</button>
+        <button class="btn ghost" data-req-reject="${esc(r.id)}" type="button">Reject</button>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('[data-req-approve]').forEach(b => b.onclick = () => decideRequest(b.dataset.reqApprove, 'approve', el));
+  el.querySelectorAll('[data-req-reject]').forEach(b => b.onclick = () => decideRequest(b.dataset.reqReject, 'reject', el));
+}
+async function decideRequest(id, decision, el){
+  el.querySelectorAll('button').forEach(b => b.disabled = true);
+  try{
+    const res = await sanghaFunctions.httpsCallable('adminDecideRequest')({ id, decision });
+    const d = (res && res.data) || {};
+    const who = (REQUESTS.find(r => r.id === id) || {}).name || 'They';
+    const msg = decision === 'reject' ? 'Request rejected.' : 'Approved. ' + who + ' can now log in.';
+    showNotice(msg);
+    await loadAll(); renderAll();
+  }catch(e){
+    showError(e && e.code === 'permission-denied' ? "Your account isn't allowed to decide requests." : "Couldn't save the decision: " + ((e && e.message) || e));
+    el.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
 }
 async function syncRoles(){
   const by = getCurrentAdmin().userId, ops = [];
@@ -440,7 +505,7 @@ function renderAll(){
   document.getElementById('mainContent').style.display = isMain ? '' : 'none';
   document.getElementById('blocked').style.display = isMain ? 'none' : '';
   if(!isMain) return;
-  renderStats(); renderUsers(); renderAdmins();
+  renderRequests(); renderStats(); renderUsers(); renderAdmins();
 }
 
 document.getElementById('search').addEventListener('input', renderUsers);

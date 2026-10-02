@@ -299,3 +299,73 @@ exports.adminGetProfile = onCall(async (request) => {
   if (hasLoc) out.location = loc;
   return out;
 });
+
+/* ------------------------------------------------------------------
+  Admin access requests (used by the ADMIN site)
+
+  Someone who logs in to the admin site with a normal Sanga account and is not an admin is asked
+  for access automatically: requestAdminAccess records a PENDING request (name and phone number are
+  taken from their verified login, never from what the browser sends). A MAIN admin sees pending
+  requests in Admin Settings and approves or rejects them with adminDecideRequest. Approving creates
+  a normal admin record with no limits yet (set limits afterwards). No message is sent: the person
+  simply logs in again once approved.
+  Both functions need "Allow public access" in Cloud Run like the other callable functions; the
+  checks are inside.
+------------------------------------------------------------------ */
+exports.requestAdminAccess = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const adm = await db.collection('admins').doc(uid).get();
+  if (adm.exists) return { status: 'admin' };
+
+  const ref = db.collection('adminRequests').doc(uid);
+  const existing = await ref.get();
+  if (existing.exists) {
+    const st = existing.data().status;
+    if (st === 'pending' || st === 'rejected') return { status: st };
+    // 'approved' but the admin record is gone (they were removed): they are asking again
+  }
+  const phone = cleanStr((request.auth.token && request.auth.token.phone_number) || '', 32);
+  const u = await db.collection('users').doc(uid).get();
+  const name = u.exists ? cleanStr(u.data().name, 120) : '';
+  await ref.set({ status: 'pending', name, phone, requestedAt: admin.firestore.FieldValue.serverTimestamp() });
+  return { status: 'pending' };
+});
+
+exports.adminDecideRequest = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const me = await db.collection('admins').doc(uid).get();
+  if (!me.exists || me.data().role !== 'main') {
+    throw new HttpsError('permission-denied', 'Main admins only.');
+  }
+  const id = request.data && request.data.id;
+  const decision = request.data && request.data.decision;
+  if (typeof id !== 'string' || !id.trim() || id.length > 128 || id.includes('/')) {
+    throw new HttpsError('invalid-argument', 'A request id is required.');
+  }
+  if (decision !== 'approve' && decision !== 'reject') {
+    throw new HttpsError('invalid-argument', 'Decision must be "approve" or "reject".');
+  }
+  const target = id.trim();
+  const ref = db.collection('adminRequests').doc(target);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'No such request.');
+  const r = snap.data() || {};
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  if (decision === 'reject') {
+    await ref.set({ status: 'rejected', decidedBy: uid, decidedAt: now }, { merge: true });
+    return { status: 'rejected' };
+  }
+
+  const adminRef = db.collection('admins').doc(target);
+  const already = await adminRef.get();
+  if (!already.exists) {                     // already an admin: nothing to create (their limits stay)
+    await adminRef.set({
+      role: 'admin', name: cleanStr(r.name, 120), phone: cleanStr(r.phone, 32),
+      countries: [], states: [], cities: [], zips: [], categories: [],
+      updatedAt: now, updatedBy: uid,
+    });
+  }
+  await ref.set({ status: 'approved', decidedBy: uid, decidedAt: now }, { merge: true });
+  return { status: 'approved' };
+});
