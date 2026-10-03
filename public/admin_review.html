@@ -304,7 +304,7 @@ const DEMO_PRACTICE_SETS = [
 ];
 // Square-card event lists (saved / hosted / upcoming / attended) are built from the same sample
 // EVENTS array the review queue uses, so they look like real listings rather than placeholder text.
-const eventBox = (e) => ({ title: e.title, dateDisplay: e.dateDisplay, category: e.category });
+const eventBox = (e) => ({ title: e.title, dateDisplay: e.dateDisplay, category: e.category, price: e.price });
 function pickEvents(start, count){
   const out = [];
   for(let i = 0; i < count; i++) out.push(EVENTS[(start + i) % EVENTS.length]);
