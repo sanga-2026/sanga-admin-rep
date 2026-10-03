@@ -302,6 +302,14 @@ const DEMO_PRACTICE_SETS = [
   ['journaling', 'gratitude'], ['naturewalks', 'forest'], ['breathwork', 'vinyasa'],
   ['mindfuleating', 'plantbased'], ['soundhealing', 'restorative'], ['taichi', 'coldplunge'],
 ];
+// Square-card event lists (saved / hosted / upcoming / attended) are built from the same sample
+// EVENTS array the review queue uses, so they look like real listings rather than placeholder text.
+const eventBox = (e) => ({ title: e.title, dateDisplay: e.dateDisplay, category: e.category });
+function pickEvents(start, count){
+  const out = [];
+  for(let i = 0; i < count; i++) out.push(EVENTS[(start + i) % EVENTS.length]);
+  return out.map(eventBox);
+}
 function hostDemoProfile(h, idx){
   const place = [h.city, h.country].filter(Boolean).join(', ');
   return {
@@ -314,10 +322,14 @@ function hostDemoProfile(h, idx){
     practices: DEMO_PRACTICE_SETS[idx % DEMO_PRACTICE_SETS.length],
     location: { city: h.city, state: h.state, country: h.country },
     privacy: { showProfile: true, showCity: true, allowMessages: true, showReservations: true },
-    hidden: { profile: false, city: false },
+    hidden: { profile: false, city: false, reservations: false },
     statJoined: Math.max(1, Math.round(h.eventsHosted * 2.2)),
     statCities: h.city ? 1 : 0,
     statHosted: h.eventsHosted,
+    savedEvents: pickEvents(idx * 2 + 1, 3),
+    hostedEvents: EVENTS.filter(e => e.host === h.name).map(eventBox),
+    upcomingEvents: pickEvents(idx * 2 + 5, 2),
+    attendedEvents: pickEvents(idx * 3 + 2, 4),
   };
 }
 // Same routing SanghaAdmin.profileUrl uses (main admin -> full profile, normal admin -> privacy-filtered
