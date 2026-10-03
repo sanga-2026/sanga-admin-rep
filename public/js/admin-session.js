@@ -92,7 +92,7 @@
       role: isMain ? 'main' : 'admin',
       userId: session.id,
       name: d.name || session.name || session.phone || 'Admin',
-      roleLabel: isMain ? 'Full access' : 'Admin · review only',
+      roleLabel: isMain ? 'Full access' : 'Admin',
       avatar: '',
       scope: isMain ? null : {
         countries: d.countries || [], states: d.states || [], cities: d.cities || [], zips: d.zips || [], categories: d.categories || []

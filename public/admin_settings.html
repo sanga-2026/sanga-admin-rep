@@ -113,7 +113,7 @@
 
     <div class="section">
       <div class="sec-title">Promote someone</div>
-      <div class="sec-sub">Everyone who has signed up appears here.</div>
+      <div class="sec-sub">People who have logged in to the admin site appear here — not everyone with a Sanga account.</div>
       <input class="search" id="search" type="text" placeholder="Search by name or phone…">
       <div id="usersList"></div>
     </div>
@@ -137,7 +137,11 @@
 <script>
 const CATEGORIES = ["Sattvic Cooking","Hiking","Sky Gazing","Public Speaking","Mindful Baking","Sustainability","Storytelling","Art & Craft","Junior Yoga","Nature Explorers","Other"];
 
-let PEOPLE = [];   // everyone with an account: { id, name, phone } — from the adminListUsers function
+let PEOPLE = [];   // only people relevant to this page: current admins/main admins, plus anyone who has
+                    // ever asked for admin access (requested, approved or rejected) — never everyone
+                    // who merely has a Sanga account from the app. Built from adminListUsers (names +
+                    // phone numbers) filtered down to REQUESTED_IDS (see loadRequests).
+let REQUESTED_IDS = new Set();   // every uid that has (or ever had) a doc in adminRequests
 
 /* ---------------- built-in place data ---------------- */
 const COUNTRIES = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czechia","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
@@ -240,7 +244,11 @@ async function loadAll(){
   }catch(e){ showError("Couldn't load the admin list: " + (e.message || e)); }
   try{
     const res = await sanghaFunctions.httpsCallable('adminListUsers')();
-    PEOPLE = ((res.data && res.data.users) || []).map(u => ({ id: u.id, name: u.name || u.phone || 'Unnamed', phone: u.phone || '' }))
+    const all = ((res.data && res.data.users) || []).map(u => ({ id: u.id, name: u.name || u.phone || 'Unnamed', phone: u.phone || '' }));
+    // Only people who came through the admin site: they asked for access (REQUESTED_IDS, any status)
+    // or are already an admin/main admin. A Sanga app account that never touched this site — most
+    // people — never shows up here.
+    PEOPLE = all.filter(u => REQUESTED_IDS.has(u.id) || roles[u.id] || mains[u.id])
       .sort((a, b) => a.name.localeCompare(b.name));
   }catch(e){ showError("Couldn't load the people list: " + (e.message || e)); }
 }
@@ -261,7 +269,9 @@ async function loadRequests(){
   try{
     const snap = await sanghaDb.collection('adminRequests').get();
     const list = [];
+    REQUESTED_IDS = new Set();
     snap.forEach(d => {
+      REQUESTED_IDS.add(d.id);   // any status: this is who has ever gone through the admin login
       const v = d.data() || {};
       if(v.status !== 'pending') return;
       const t = v.requestedAt, ms = t && t.toMillis ? t.toMillis() : (t && t.seconds ? t.seconds * 1000 : 0);

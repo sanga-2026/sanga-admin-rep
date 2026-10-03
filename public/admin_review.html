@@ -65,11 +65,10 @@
   .seen-tag{display:inline-block;font-size:11px;font-weight:700;color:#8a5b12;background:var(--sage);border-radius:999px;padding:2px 9px;margin-top:6px;}
   .undo{background:none;border:none;font-size:12px;text-decoration:underline;opacity:.65;margin-left:8px;}
   .empty{font-size:14px;opacity:.55;text-align:center;padding:40px 0;}
-  .foot{text-align:center;margin-top:8px;}
-  .foot button{font-size:12px;opacity:.6;text-decoration:underline;background:none;border:none;}
 
   /* Messages tab */
-  .msg{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px;}
+  .msg{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  .msg:hover{border-color:var(--rust);box-shadow:0 4px 16px rgba(0,0,0,.06);}
   .msg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
   .msg-from{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;}
   .msg-meta{font-size:12px;opacity:.6;margin-top:3px;line-height:1.5;}
@@ -89,6 +88,26 @@
   .host-stats{margin-left:auto;text-align:right;flex-shrink:0;}
   .host-stats b{display:block;font-family:'Poppins',sans-serif;font-size:16px;}
   .host-stats span{font-size:11px;opacity:.6;}
+
+  /* Message popup */
+  .modal-overlay{position:fixed;inset:0;background:rgba(13,13,13,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100;}
+  .modal-box{background:#fff;border-radius:16px;max-width:460px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;position:relative;}
+  .modal-close{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;}
+  .modal-close:hover{border-color:#c0392b;color:#c0392b;}
+  .modal-from{font-family:'Poppins',sans-serif;font-size:16px;font-weight:700;padding-right:30px;}
+  .modal-meta{font-size:12px;opacity:.6;margin-top:3px;}
+  .modal-subject{font-size:13.5px;font-weight:700;margin-top:14px;}
+  .modal-body{font-size:13.5px;line-height:1.6;opacity:.85;margin-top:6px;}
+  .modal-reply-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;font-weight:700;margin:18px 0 6px;}
+  .modal-box textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);font-size:13.5px;font-family:inherit;outline:none;resize:vertical;}
+  .modal-box textarea:focus{border-color:var(--rust);}
+  .modal-actions{display:flex;gap:10px;margin-top:14px;}
+  .modal-actions button{flex:1;padding:11px;border-radius:10px;font-weight:700;font-size:13px;border:none;}
+  .mm-resolve{background:transparent;border:1.5px solid #2e7d32;color:#2e7d32;}
+  .mm-resolve:hover{background:#eef7ee;}
+  .mm-submit{background:var(--rust);color:#fff;}
+  .mm-submit:hover{opacity:.9;}
+  .modal-status{font-size:12px;opacity:.6;margin-top:8px;text-align:center;min-height:1.2em;}
 </style>
 <style>html.sg-locked body{visibility:hidden}</style>
 <script>document.documentElement.classList.add("sg-locked")</script>
@@ -132,7 +151,6 @@
     </div>
 
     <div id="list"></div>
-    <div class="foot"><button id="resetBtn" type="button">Reset demo data</button></div>
   </div>
 
   <!-- ===================== MESSAGES ===================== -->
@@ -145,9 +163,11 @@
       <div class="filters-title"><span>Filter</span><button id="msgClearBtn" type="button">Clear filters</button></div>
       <div class="grid">
         <div><label for="mfKind">Type</label><select id="mfKind"><option value="">Customer &amp; support</option><option value="customer">Customer</option><option value="support">Support</option></select></div>
+        <div><label for="mfCategory">Category</label><select id="mfCategory"></select></div>
         <div><label for="mfCountry">Country</label><select id="mfCountry"></select></div>
         <div><label for="mfState">State / region</label><select id="mfState"></select></div>
         <div><label for="mfCity">City</label><select id="mfCity"></select></div>
+        <div><label for="mfZip">Zip / postal code</label><input id="mfZip" type="text" placeholder="e.g. 787"></div>
       </div>
     </div>
 
@@ -172,6 +192,7 @@
         <div><label for="hfCountry">Country</label><select id="hfCountry"></select></div>
         <div><label for="hfState">State / region</label><select id="hfState"></select></div>
         <div><label for="hfCity">City</label><select id="hfCity"></select></div>
+        <div><label for="hfZip">Zip / postal code</label><input id="hfZip" type="text" placeholder="e.g. 787"></div>
       </div>
     </div>
 
@@ -181,6 +202,24 @@
     </div>
 
     <div id="hostList"></div>
+  </div>
+</div>
+
+<!-- Message popup: opened by clicking a message; Esc or the × button closes it. -->
+<div id="msgModalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <button class="modal-close" id="mmClose" type="button" aria-label="Close">×</button>
+    <div class="modal-from" id="mmFrom"></div>
+    <div class="modal-meta" id="mmMeta"></div>
+    <div class="modal-subject" id="mmSubject"></div>
+    <div class="modal-body" id="mmBody"></div>
+    <div class="modal-reply-lbl">Reply</div>
+    <textarea id="mmReply" rows="4" placeholder="Write a reply…"></textarea>
+    <div class="modal-actions">
+      <button class="mm-resolve" id="mmResolve" type="button">Mark resolved</button>
+      <button class="mm-submit" id="mmSubmit" type="button">Submit</button>
+    </div>
+    <div class="modal-status" id="mmStatus"></div>
   </div>
 </div>
 
@@ -194,6 +233,7 @@
 <script>
 const DEC_KEY      = 'sanga_admin_decisions_v1';
 const VIEWED_KEY   = 'sanga_admin_viewed_v1';   // { [adminId]: { [eventId]: time first/last opened } }
+const MSG_KEY       = 'sanga_admin_messages_v1'; // { [messageId]: { status: 'open'|'resolved', reply: '…' } }
 
 // Names for the sample people (matches the Admin Settings page).
 function jget(k, d){ try{ return JSON.parse(localStorage.getItem(k)) || d; }catch(e){ return d; } }
@@ -223,16 +263,16 @@ const EVENTS = [
 /* Sample support/customer messages — still sample data, like the review queue, until messages
    move into Firestore. Scoped to the admin the same way events are: by country/state/city. */
 const MESSAGES = [
-  { id:'m1', kind:'customer', from:'Priya Nair',      country:'India',          state:'Uttarakhand', city:'Rishikesh',     subject:'Refund for cancelled sunrise yoga',  preview:'Hi, the host cancelled Sunrise Yoga by the Ganges and I haven’t seen my refund yet.', dateDisplay:'Oct 1, 2026', status:'open' },
-  { id:'m2', kind:'support',  from:'Jordan Lee (host)', country:'United States', state:'Texas',       city:'Austin',        subject:'Can I change my brunch group size?', preview:'I’d like to raise the cap on Plant-Based Brunch Circle from 12 to 16 guests, is that possible?', dateDisplay:'Sep 29, 2026', status:'open' },
-  { id:'m3', kind:'customer', from:'Dana Whitfield',  country:'United States',  state:'Colorado',    city:'Denver',        subject:'Trouble booking Forest Bathing Walk', preview:'The app keeps showing an error when I try to pay for this event.', dateDisplay:'Sep 28, 2026', status:'open' },
-  { id:'m4', kind:'support',  from:'Hannah Price (host)', country:'United Kingdom', state:'England', city:'London',        subject:'Verification badge missing',         preview:'My ID was approved last week but my profile still doesn’t show the verified badge.', dateDisplay:'Sep 26, 2026', status:'resolved' },
-  { id:'m5', kind:'customer', from:'Omar Haddad',     country:'United Arab Emirates', state:'Dubai', city:'Dubai',         subject:'Is the stargazing event family-friendly?', preview:'Can I bring my two kids, ages 7 and 10, to the stargazing night?', dateDisplay:'Sep 24, 2026', status:'resolved' },
-  { id:'m6', kind:'customer', from:'Ravi Shankar',    country:'India',          state:'Karnataka',   city:'Bengaluru',     subject:'Host didn’t show up',           preview:'No one from Public Speaking Without Fear showed up at the venue today.', dateDisplay:'Sep 20, 2026', status:'open' },
-  { id:'m7', kind:'support',  from:'Chris Doyle (host)', country:'United States', state:'Texas',      city:'Austin',        subject:'Payout for Mindful Sourdough Baking', preview:'My payout for last week’s class still shows as pending, can you check?', dateDisplay:'Sep 18, 2026', status:'open' },
-  { id:'m8', kind:'customer', from:'Lucia Fernandez', country:'Mexico',         state:'Mexico City', city:'Mexico City',   subject:'Allergy question before booking',    preview:'Does the Zero-Waste Home Workshop use any tree nuts in the recipes?', dateDisplay:'Sep 15, 2026', status:'resolved' },
-  { id:'m9', kind:'customer', from:'Noah Kim',        country:'United States',  state:'California',  city:'San Francisco', subject:'Wrong address on the listing',       preview:'The meetup address for the Bay Area Sustainability Meetup points to the wrong building.', dateDisplay:'Sep 10, 2026', status:'open' },
-  { id:'m10',kind:'support',  from:'Emily Ward (host)', country:'United States', state:'Colorado',    city:'Boulder',       subject:'Adding a co-host',                   preview:'Can my friend be listed as a co-host on Boulder Creek Hike going forward?', dateDisplay:'Sep 8, 2026',  status:'resolved' },
+  { id:'m1', kind:'customer', from:'Priya Nair',      country:'India',          state:'Uttarakhand', city:'Rishikesh',     zip:'249201', category:'Junior Yoga',      subject:'Refund for cancelled sunrise yoga',  preview:'Hi, the host cancelled Sunrise Yoga by the Ganges and I haven’t seen my refund yet.', dateDisplay:'Oct 1, 2026', status:'open' },
+  { id:'m2', kind:'support',  from:'Jordan Lee (host)', country:'United States', state:'Texas',       city:'Austin',        zip:'78701',  category:'Sattvic Cooking',  subject:'Can I change my brunch group size?', preview:'I’d like to raise the cap on Plant-Based Brunch Circle from 12 to 16 guests, is that possible?', dateDisplay:'Sep 29, 2026', status:'open' },
+  { id:'m3', kind:'customer', from:'Dana Whitfield',  country:'United States',  state:'Colorado',    city:'Denver',        zip:'80202',  category:'Nature Explorers', subject:'Trouble booking Forest Bathing Walk', preview:'The app keeps showing an error when I try to pay for this event.', dateDisplay:'Sep 28, 2026', status:'open' },
+  { id:'m4', kind:'support',  from:'Hannah Price (host)', country:'United Kingdom', state:'England', city:'London',        zip:'SW1A 1AA', category:'Storytelling',   subject:'Verification badge missing',         preview:'My ID was approved last week but my profile still doesn’t show the verified badge.', dateDisplay:'Sep 26, 2026', status:'resolved' },
+  { id:'m5', kind:'customer', from:'Omar Haddad',     country:'United Arab Emirates', state:'Dubai', city:'Dubai',         zip:'',       category:'Sky Gazing',       subject:'Is the stargazing event family-friendly?', preview:'Can I bring my two kids, ages 7 and 10, to the stargazing night?', dateDisplay:'Sep 24, 2026', status:'resolved' },
+  { id:'m6', kind:'customer', from:'Ravi Shankar',    country:'India',          state:'Karnataka',   city:'Bengaluru',     zip:'560001', category:'Public Speaking',  subject:'Host didn’t show up',           preview:'No one from Public Speaking Without Fear showed up at the venue today.', dateDisplay:'Sep 20, 2026', status:'open' },
+  { id:'m7', kind:'support',  from:'Chris Doyle (host)', country:'United States', state:'Texas',      city:'Austin',        zip:'78704',  category:'Mindful Baking',   subject:'Payout for Mindful Sourdough Baking', preview:'My payout for last week’s class still shows as pending, can you check?', dateDisplay:'Sep 18, 2026', status:'open' },
+  { id:'m8', kind:'customer', from:'Lucia Fernandez', country:'Mexico',         state:'Mexico City', city:'Mexico City',   zip:'06000',  category:'Sustainability',   subject:'Allergy question before booking',    preview:'Does the Zero-Waste Home Workshop use any tree nuts in the recipes?', dateDisplay:'Sep 15, 2026', status:'resolved' },
+  { id:'m9', kind:'customer', from:'Noah Kim',        country:'United States',  state:'California',  city:'San Francisco', zip:'94103',  category:'Sustainability',   subject:'Wrong address on the listing',       preview:'The meetup address for the Bay Area Sustainability Meetup points to the wrong building.', dateDisplay:'Sep 10, 2026', status:'open' },
+  { id:'m10',kind:'support',  from:'Emily Ward (host)', country:'United States', state:'Colorado',    city:'Boulder',       zip:'80302',  category:'Hiking',           subject:'Adding a co-host',                   preview:'Can my friend be listed as a co-host on Boulder Creek Hike going forward?', dateDisplay:'Sep 8, 2026',  status:'resolved' },
 ];
 
 /* Sample host directory — one row per person who hosts events, filtered to the admin's scope
@@ -357,7 +397,7 @@ function scopeText(withCategories){
   if(myScope.cities.length)     parts.push(`cities: <b>${esc(myScope.cities.join(', '))}</b>`);
   if(myScope.zips.length)       parts.push(`zip codes: <b>${esc(myScope.zips.join(', '))}</b>`);
   if(withCategories !== false && myScope.categories.length) parts.push(`categories: <b>${esc(myScope.categories.join(', '))}</b>`);
-  return parts.length ? 'You see ' + parts.join(' &nbsp;·&nbsp; ') : "You see <b>everything</b> — the main admin hasn't narrowed your scope yet.";
+  return parts.length ? 'You see ' + parts.join(' &nbsp;·&nbsp; ') : '';   // nothing narrowed yet: no box to show
 }
 
 /* ---- "Viewed" = events this admin has opened to read the details ---- */
@@ -461,18 +501,24 @@ function render(){
 }
 
 /* ===================== MESSAGES ===================== */
-const mf = { kind:'', country:'', state:'', city:'' };
+const mf = { kind:'', category:'', country:'', state:'', city:'', zip:'' };
 let mtab = 'open';
+let msgStore = jget(MSG_KEY, {});   // local reply/resolved overrides, same pattern as `decisions` above
+const msgStatus = (m) => (msgStore[m.id] && msgStore[m.id].status) || m.status;
+const msgReply  = (m) => (msgStore[m.id] && msgStore[m.id].reply) || '';
 const baseMessages = () => MESSAGES.filter(m => inScope(m, myScope, { noZip:true, noCategory:true }));
 function passesMsg(m){
-  return (!mf.kind || m.kind === mf.kind)
-      && (!mf.country || m.country === mf.country)
-      && (!mf.state   || m.state === mf.state)
-      && (!mf.city    || m.city === mf.city);
+  return (!mf.kind     || m.kind === mf.kind)
+      && (!mf.category || m.category === mf.category)
+      && (!mf.country  || m.country === mf.country)
+      && (!mf.state    || m.state === mf.state)
+      && (!mf.city     || m.city === mf.city)
+      && (!mf.zip      || String(m.zip || '').toLowerCase().startsWith(mf.zip.toLowerCase()));
 }
 function renderMsgFilters(){
   const base = baseMessages();
   document.getElementById('mfKind').value = mf.kind;
+  mf.category = fill('mfCategory', uniq(base.map(m => m.category)), mf.category, 'All categories');
   mf.country = fill('mfCountry', uniq(base.map(m => m.country)), mf.country, 'All countries');
   const inCountry = base.filter(m => !mf.country || m.country === mf.country);
   mf.state = fill('mfState', uniq(inCountry.map(m => m.state)), mf.state, 'All states');
@@ -481,7 +527,7 @@ function renderMsgFilters(){
 }
 function msgGroups(){
   const visible = baseMessages().filter(passesMsg);
-  return { open: visible.filter(m => m.status === 'open'), resolved: visible.filter(m => m.status === 'resolved') };
+  return { open: visible.filter(m => msgStatus(m) === 'open'), resolved: visible.filter(m => msgStatus(m) === 'resolved') };
 }
 const MSG_EMPTY = {
   open:     ['Nothing open right now. 🎉', 'No open messages match these filters.'],
@@ -498,14 +544,14 @@ function renderMessages(){
   const list = document.getElementById('msgList');
   const shown = g[mtab];
   if(!shown.length){
-    const filtering = mf.kind || mf.country || mf.state || mf.city;
+    const filtering = mf.kind || mf.category || mf.country || mf.state || mf.city || mf.zip;
     list.innerHTML = `<div class="empty">${MSG_EMPTY[mtab][filtering ? 1 : 0]}</div>`;
     return;
   }
   list.innerHTML = shown.map(m => {
     const place = [m.city, m.state, m.country].filter(Boolean).join(', ');
     return `
-    <div class="msg">
+    <div class="msg" data-id="${m.id}">
       <div class="msg-head">
         <div>
           <div class="msg-from">${esc(m.from)}</div>
@@ -515,19 +561,65 @@ function renderMessages(){
       </div>
       <div class="msg-subject">${esc(m.subject)}</div>
       <div class="msg-preview">${esc(m.preview)}</div>
+      ${msgReply(m) ? '<span class="seen-tag">✓ Replied</span>' : ''}
     </div>`;
   }).join('');
+  list.querySelectorAll('.msg').forEach(card => card.addEventListener('click', () => openMsgModal(card.dataset.id)));
 }
 
+/* ---- message popup: full message, a reply box, Submit and Mark resolved ---- */
+let mmId = null;
+function openMsgModal(id){
+  const m = MESSAGES.find(x => x.id === id);
+  if(!m) return;
+  mmId = id;
+  const place = [m.city, m.state, m.country].filter(Boolean).join(', ');
+  document.getElementById('mmFrom').textContent = m.from;
+  document.getElementById('mmMeta').textContent = place + ' · ' + m.dateDisplay;
+  document.getElementById('mmSubject').textContent = m.subject;
+  document.getElementById('mmBody').textContent = m.preview;
+  document.getElementById('mmReply').value = msgReply(m);
+  document.getElementById('mmStatus').textContent = '';
+  document.getElementById('mmResolve').textContent = msgStatus(m) === 'resolved' ? 'Already resolved' : 'Mark resolved';
+  document.getElementById('mmResolve').disabled = msgStatus(m) === 'resolved';
+  document.getElementById('msgModalOverlay').style.display = 'flex';
+  document.getElementById('mmReply').focus();
+}
+function closeMsgModal(){
+  document.getElementById('msgModalOverlay').style.display = 'none';
+  mmId = null;
+}
+function saveMsgState(patch){
+  msgStore = jget(MSG_KEY, {});
+  msgStore[mmId] = Object.assign({ status: 'open' }, msgStore[mmId], patch);
+  jset(MSG_KEY, msgStore);
+}
+document.getElementById('mmClose').onclick = closeMsgModal;
+document.getElementById('msgModalOverlay').addEventListener('click', (e) => { if(e.target.id === 'msgModalOverlay') closeMsgModal(); });
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && document.getElementById('msgModalOverlay').style.display !== 'none') closeMsgModal(); });
+document.getElementById('mmSubmit').onclick = () => {
+  const reply = document.getElementById('mmReply').value.trim();
+  saveMsgState({ reply });
+  document.getElementById('mmStatus').textContent = reply ? 'Reply sent ✓' : 'Saved ✓';
+  renderMessages();
+  setTimeout(closeMsgModal, 500);
+};
+document.getElementById('mmResolve').onclick = () => {
+  saveMsgState({ status: 'resolved' });
+  renderMessages();
+  closeMsgModal();
+};
+
 /* ===================== HOSTS ===================== */
-const hf = { category:'', country:'', state:'', city:'' };
+const hf = { category:'', country:'', state:'', city:'', zip:'' };
 let htab = 'active';
 const baseHosts = () => HOSTS.filter(h => inScope(h, myScope, { noZip:true }));
 function passesHost(h){
   return (!hf.category || h.category === hf.category)
       && (!hf.country  || h.country === hf.country)
       && (!hf.state    || h.state === hf.state)
-      && (!hf.city     || h.city === hf.city);
+      && (!hf.city     || h.city === hf.city)
+      && (!hf.zip      || String(h.zip || '').toLowerCase().startsWith(hf.zip.toLowerCase()));
 }
 function renderHostFilters(){
   const base = baseHosts();
@@ -591,25 +683,31 @@ function renderMainTabs(){
 }
 document.querySelectorAll('.main-tab').forEach(t => t.onclick = () => { mainTab = t.dataset.main; renderMainTabs(); });
 
+// Shows the scope box only when the admin's scope actually narrows something; hidden for a main
+// admin (who sees everything) and for a normal admin with no limits set yet (same thing from
+// their point of view — nothing to explain).
+function setScopeBox(elId, withCategories){
+  const el = document.getElementById(elId);
+  const txt = isMain ? '' : scopeText(withCategories);
+  el.style.display = txt ? '' : 'none';
+  el.innerHTML = txt;
+}
+
 function applyIdentity(){
   loadIdentity();
   renderUserChip();
   viewedAll = jget(VIEWED_KEY, {});
+  msgStore = jget(MSG_KEY, {});
   f.category = f.country = f.state = f.city = f.zip = '';
   document.getElementById('fZip').value = '';
-  mf.kind = mf.country = mf.state = mf.city = '';
-  hf.category = hf.country = hf.state = hf.city = '';
+  mf.kind = mf.category = mf.country = mf.state = mf.city = mf.zip = '';
+  document.getElementById('mfZip').value = '';
+  hf.category = hf.country = hf.state = hf.city = hf.zip = '';
+  document.getElementById('hfZip').value = '';
   tab = 'pending'; mtab = 'open'; htab = 'active';
-  // The main admin sees everything, so there is nothing to explain; a normal admin gets their scope spelled out.
-  const eventsBox = document.getElementById('scopeBox');
-  eventsBox.style.display = isMain ? 'none' : '';
-  eventsBox.innerHTML = isMain ? '' : scopeText(true);
-  const msgBox = document.getElementById('msgScopeBox');
-  msgBox.style.display = isMain ? 'none' : '';
-  msgBox.innerHTML = isMain ? '' : scopeText(false);
-  const hostBox = document.getElementById('hostScopeBox');
-  hostBox.style.display = isMain ? 'none' : '';
-  hostBox.innerHTML = isMain ? '' : scopeText(true);
+  setScopeBox('scopeBox', true);
+  setScopeBox('msgScopeBox', false);
+  setScopeBox('hostScopeBox', true);
   renderMainTabs();
   render();
   renderMessages();
@@ -621,18 +719,19 @@ function applyIdentity(){
 document.getElementById('fZip').addEventListener('input', e => { f.zip = e.target.value.trim(); render(); });
 document.getElementById('clearBtn').onclick = () => { f.category = f.country = f.state = f.city = f.zip = ''; document.getElementById('fZip').value = ''; render(); };
 document.querySelectorAll('#panel-events .tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; render(); });
-document.getElementById('resetBtn').onclick = () => { decisions = {}; viewedAll = {}; jset(DEC_KEY, decisions); jset(VIEWED_KEY, viewedAll); render(); };
 
-['mfKind','mfCountry','mfState','mfCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
-  mf[{mfKind:'kind', mfCountry:'country', mfState:'state', mfCity:'city'}[id]] = e.target.value; renderMessages();
+['mfKind','mfCategory','mfCountry','mfState','mfCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
+  mf[{mfKind:'kind', mfCategory:'category', mfCountry:'country', mfState:'state', mfCity:'city'}[id]] = e.target.value; renderMessages();
 }));
-document.getElementById('msgClearBtn').onclick = () => { mf.kind = mf.country = mf.state = mf.city = ''; renderMessages(); };
+document.getElementById('mfZip').addEventListener('input', e => { mf.zip = e.target.value.trim(); renderMessages(); });
+document.getElementById('msgClearBtn').onclick = () => { mf.kind = mf.category = mf.country = mf.state = mf.city = mf.zip = ''; document.getElementById('mfZip').value = ''; renderMessages(); };
 document.querySelectorAll('#panel-messages .tab').forEach(t => t.onclick = () => { mtab = t.dataset.mtab; renderMessages(); });
 
 ['hfCategory','hfCountry','hfState','hfCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
   hf[{hfCategory:'category', hfCountry:'country', hfState:'state', hfCity:'city'}[id]] = e.target.value; renderHosts();
 }));
-document.getElementById('hostClearBtn').onclick = () => { hf.category = hf.country = hf.state = hf.city = ''; renderHosts(); };
+document.getElementById('hfZip').addEventListener('input', e => { hf.zip = e.target.value.trim(); renderHosts(); });
+document.getElementById('hostClearBtn').onclick = () => { hf.category = hf.country = hf.state = hf.city = hf.zip = ''; document.getElementById('hfZip').value = ''; renderHosts(); };
 document.querySelectorAll('#panel-hosts .tab').forEach(t => t.onclick = () => { htab = t.dataset.htab; renderHosts(); });
 
 SanghaAdmin.ready.then(ok => { if(ok) applyIdentity(); });
