@@ -94,6 +94,10 @@
   .action-btn.secondary{background:var(--forest);color:#fff;}
   .action-btn.secondary:hover{opacity:.9;}
   .action-btn.secondary svg{stroke:var(--rust);}
+  .action-btn.flag{background:#fff;border:1.5px solid #F2A94E;color:#8a5b12;}
+  .action-btn.flag:hover{background:#FFF4E5;}
+  .action-btn.flag.is-active{background:#F2A94E;color:#fff;}
+  .action-btn.primary.is-active{background:#2e7d32;}
 
   .cal-menu{position:absolute;bottom:calc(100% + 8px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.12);overflow:hidden;z-index:20;text-align:left;}
   .cal-menu.hidden{display:none;}
@@ -385,6 +389,7 @@ function checkCircleIcon(){ return '<svg width="16" height="16" viewBox="0 0 24 
 function historyIcon(){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>'; }
 function linkIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>'; }
 function noteIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>'; }
+function flagIcon(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>'; }
 
 /* ---------- render ---------- */
 const isPast = data.status === 'past';
@@ -707,7 +712,9 @@ const bookNote = document.getElementById('bookNote');
 })();
 
 /* ---------- read-only mode (opened from a shared "Copy link") ---------- */
-if(isReadonly){
+// A reviewer (see below) gets their own actions instead, so this block leaves Message host
+// and the actions row alone for them.
+if(isReadonly && !isReviewer){
   document.getElementById('hostReplyNote')?.remove();
   document.getElementById('msgHostBtn2')?.remove();
   document.getElementById('composePanel')?.remove();
@@ -719,12 +726,59 @@ if(isReadonly){
   }
 }
 
-/* ---------- reviewer mode (opened from the admin review queue) ---------- */
-// The "You're going — booking confirmed" banner is for a guest who has booked.
-// A reviewer hasn't booked anything, so links from the review queue add ?review=1
-// and the banner is removed. Without ?review=1 nothing changes for anyone.
-if(params.get('review') === '1'){
+/* ---------- reviewer mode (opened from the admin review queue) ----------
+   The "You're going — booking confirmed" banner is for a guest who has booked; a reviewer
+   hasn't booked anything, so it's removed. "Add to calendar" is removed too — a reviewer
+   isn't attending — and replaced with Approve / Flag for rejection, alongside the existing
+   Message host button. A decision made here is written to the SAME localStorage key the
+   review queue itself uses (sanga_admin_decisions_v1), so it shows up there the moment the
+   reviewer switches back to that tab (it listens for storage changes from other tabs).
+   Without ?review=1 none of this runs — nothing changes for a guest or a shared link. */
+if(isReviewer){
   document.getElementById('statusBanner')?.remove();
+
+  const DEC_KEY = 'sanga_admin_decisions_v1';
+  const getDecisions = () => { try{ return JSON.parse(localStorage.getItem(DEC_KEY)) || {}; }catch(e){ return {}; } };
+  const setDecisions = (v) => { try{ localStorage.setItem(DEC_KEY, JSON.stringify(v)); }catch(e){} };
+
+  const actionsRow = document.getElementById('actionsRow');
+  if(actionsRow){
+    actionsRow.querySelector('#addCalBtn')?.closest('div')?.remove();   // no "Add to calendar" for a reviewer
+
+    const approveBtn = document.createElement('button');
+    approveBtn.type = 'button'; approveBtn.id = 'reviewApproveBtn'; approveBtn.className = 'action-btn primary';
+    approveBtn.innerHTML = checkIcon() + ' Approve';
+
+    const flagBtn = document.createElement('button');
+    flagBtn.type = 'button'; flagBtn.id = 'reviewFlagBtn'; flagBtn.className = 'action-btn flag';
+    flagBtn.innerHTML = flagIcon() + ' Flag for rejection';
+
+    const msgBtn = document.getElementById('msgHostBtn2');
+    actionsRow.insertBefore(approveBtn, actionsRow.firstChild);
+    actionsRow.insertBefore(flagBtn, msgBtn || null);
+
+    const noteEl = document.createElement('div');
+    noteEl.id = 'reviewDecisionNote';
+    noteEl.style.cssText = 'font-size:12px;opacity:.7;margin:-2px 0 10px;';
+    actionsRow.insertAdjacentElement('afterend', noteEl);
+
+    function paintDecision(){
+      const d = getDecisions()[data.id];
+      approveBtn.classList.toggle('is-active', !!d && d.status === 'approved');
+      flagBtn.classList.toggle('is-active', !!d && d.status === 'flagged');
+      noteEl.textContent = !d ? ''
+        : d.status === 'approved' ? '✓ You approved this event.'
+        : d.status === 'flagged' ? '🚩 Flagged for rejection — a main admin will finish the decision.'
+        : '';
+    }
+    approveBtn.addEventListener('click', () => {
+      const d = getDecisions(); d[data.id] = { status: 'approved' }; setDecisions(d); paintDecision();
+    });
+    flagBtn.addEventListener('click', () => {
+      const d = getDecisions(); d[data.id] = { status: 'flagged' }; setDecisions(d); paintDecision();
+    });
+    paintDecision();
+  }
 }
 
 /* ---------- host profile link ---------- */

@@ -51,6 +51,7 @@
   .pill.ok{background:#eef7ee;border-color:#bfe3bf;color:#2e7d32;}
   .pill.no{background:#fdecea;border-color:#e5b4ac;color:#c0392b;}
   .pill.mid{background:#fff;border-color:var(--line);color:inherit;opacity:.7;}
+  .pill.warn{background:#FFF4E5;border-color:var(--rust);color:#8a5b12;}
   .desc{font-size:13px;line-height:1.6;opacity:.85;margin:12px 0;}
   .acts{display:flex;gap:10px;}
   .approve{flex:1;padding:11px;border-radius:10px;background:#2e7d32;color:#fff;font-weight:700;font-size:13px;border:none;}
@@ -146,6 +147,7 @@
     <div class="tabs">
       <button class="tab on" data-tab="pending" type="button">Pending <span id="cntPending"></span></button>
       <button class="tab" data-tab="approved" type="button">Approved <span id="cntApproved"></span></button>
+      <button class="tab" data-tab="flagged" type="button" title="A reviewer flagged this from the event details page; needs a final decision">Flagged for rejection <span id="cntFlagged"></span></button>
       <button class="tab" data-tab="rejected" type="button">Rejected <span id="cntRejected"></span></button>
       <button class="tab" data-tab="viewed" type="button" title="Opened, but not approved or rejected yet">Viewed <span id="cntViewed"></span></button>
     </div>
@@ -463,6 +465,8 @@ function groups(){
   return {
     pending:  visible.filter(e => !decisions[e.id]),
     approved: visible.filter(e => decisions[e.id] && decisions[e.id].status === 'approved'),
+    // Flagged from the event details page by any reviewer; waits here for a final approve/reject.
+    flagged:  visible.filter(e => decisions[e.id] && decisions[e.id].status === 'flagged'),
     rejected: visible.filter(e => decisions[e.id] && decisions[e.id].status === 'rejected'),
     // Viewed = opened, but not decided yet (opened − approved − rejected). Once you approve or
     // reject an event it moves to Approved/Rejected; Undo brings it back here if it was opened.
@@ -471,7 +475,7 @@ function groups(){
 }
 function refreshCounts(){
   const g = groups();
-  ['Pending','Approved','Rejected','Viewed'].forEach(n => { document.getElementById('cnt' + n).textContent = `(${g[n.toLowerCase()].length})`; });
+  ['Pending','Approved','Flagged','Rejected','Viewed'].forEach(n => { document.getElementById('cnt' + n).textContent = `(${g[n.toLowerCase()].length})`; });
   document.getElementById('mainCntEvents').textContent = `(${g.pending.length})`;
 }
 // Called when an event's details are opened. Updates in place (no re-draw), so the
@@ -488,6 +492,7 @@ function markViewed(id){
 const EMPTY = {
   pending:  ['Nothing waiting for review right now. 🎉', 'No pending events match these filters.'],
   approved: ['No approved events yet.', 'No approved events match these filters.'],
+  flagged:  ['Nothing flagged for rejection right now.', 'No flagged events match these filters.'],
   rejected: ['No rejected events yet.', 'No rejected events match these filters.'],
   viewed:   ["Nothing here. Events you open but haven't approved or rejected yet show up in this tab.", 'No viewed events match these filters.'],
 };
@@ -508,6 +513,11 @@ function render(){
   list.innerHTML = shown.map(e => {
     const d = decisions[e.id];
     const place = [e.city, e.state, e.country].filter(Boolean).join(', ') + (e.zip ? ' · ' + e.zip : '');
+    const pillClass = !d ? '' : d.status === 'approved' ? 'ok' : d.status === 'flagged' ? 'warn' : 'no';
+    const pillText = !d ? esc(e.audience) : d.status === 'approved' ? 'Approved' : d.status === 'flagged' ? 'Flagged' : 'Rejected';
+    // A decided (approved/rejected) event is final, with Undo. A flagged one — set either here or
+    // from the event details page's "Flag for rejection" button — still needs Approve/Reject below;
+    // its note just explains why it's here, with "Clear flag" instead of Undo.
     return `
     <div class="ev" data-id="${e.id}">
       <div class="ev-head">
@@ -516,11 +526,13 @@ function render(){
           <div class="ev-meta">${esc(place)}<br>${esc(e.category)} · hosted by ${esc(e.host)}</div>
           <div class="seen-slot">${seen[e.id] ? seenTag : ''}</div>
         </div>
-        <span class="pill ${d ? (d.status === 'approved' ? 'ok' : 'no') : ''}">${d ? (d.status === 'approved' ? 'Approved' : 'Rejected') : esc(e.audience)}</span>
+        <span class="pill ${pillClass}">${pillText}</span>
       </div>
       <div class="desc">${esc(e.description)}</div>
       <a class="view-link" href="${esc(eventDetailUrl(e))}" target="_blank" rel="noopener">View full details →</a>
-      ${d ? `<div class="note">${d.status === 'rejected' && d.reason ? 'Reason given: “' + esc(d.reason) + '”' : (d.status === 'approved' ? 'This event would now appear publicly.' : 'No reason was given.')}<button class="undo" data-undo="${e.id}" type="button">Undo</button></div>` : `
+      ${d && d.status !== 'flagged' ? `<div class="note">${d.status === 'rejected' && d.reason ? 'Reason given: “' + esc(d.reason) + '”' : (d.status === 'approved' ? 'This event would now appear publicly.' : 'No reason was given.')}<button class="undo" data-undo="${e.id}" type="button">Undo</button></div>` : ''}
+      ${d && d.status === 'flagged' ? `<div class="note">🚩 Flagged for rejection from the event details page — needs a final decision.<button class="undo" data-undo="${e.id}" type="button">Clear flag</button></div>` : ''}
+      ${!d || d.status === 'flagged' ? `
       <div class="acts">
         <button class="approve" data-approve="${e.id}" type="button">Approve</button>
         <button class="reject" data-reject="${e.id}" type="button">Reject</button>
@@ -528,7 +540,7 @@ function render(){
       <div class="reason" id="reason-${e.id}">
         <input type="text" id="reasonIn-${e.id}" placeholder="Reason (optional) — shown to the host">
         <button class="confirm" data-confirm="${e.id}" type="button">Confirm reject</button>
-      </div>`}
+      </div>` : ''}
     </div>`;
   }).join('');
 
@@ -786,6 +798,15 @@ document.getElementById('hostClearBtn').onclick = () => { hf.category = hf.count
 document.querySelectorAll('#panel-hosts .tab').forEach(t => t.onclick = () => { htab = t.dataset.htab; renderHosts(); });
 
 SanghaAdmin.ready.then(ok => { if(ok) applyIdentity(); });
+
+// Approve / Flag for rejection on the event details page (opened in a new tab) writes to this
+// same key. 'storage' only fires in OTHER tabs, which is exactly this case: pick up the change
+// the moment this tab is back in focus, no polling needed.
+window.addEventListener('storage', (ev) => {
+  if(ev.key !== DEC_KEY) return;
+  decisions = jget(DEC_KEY, {});
+  render();
+});
 </script>
 </body>
 </html>
