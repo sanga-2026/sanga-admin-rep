@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Review Queue — Sangha (prototype)</title>
+<title>Admin Review — Sangha (prototype)</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{ --bg:#FFFFFF; --card:#FFFDF8; --forest:#000; --rust:#F2A94E; --sage:#FBE3B8; --ink:#0D0D0D; --line:#E4E4E4; }
@@ -28,6 +28,13 @@
   .grid label{display:block;font-size:11px;font-weight:700;opacity:.6;margin-bottom:4px;}
   .grid select,.grid input{width:100%;padding:9px 10px;border-radius:9px;border:1px solid var(--line);font-size:13px;background:#fff;outline:none;}
   .grid select:focus,.grid input:focus{border-color:var(--rust);}
+
+  /* top-level section switcher: Events Review / Messages / Host */
+  .main-tabs{display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--line);}
+  .main-tab{padding:11px 4px;margin-right:18px;border:none;background:none;font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;opacity:.5;border-bottom:3px solid transparent;border-radius:0;}
+  .main-tab.on{opacity:1;border-bottom-color:var(--rust);}
+  .main-tab .cnt{font-family:'Lato',sans-serif;font-weight:700;opacity:.55;font-size:12px;margin-left:3px;}
+
   .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
   .tab{padding:8px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:700;}
   .tab.on{background:var(--ink);color:#fff;border-color:var(--ink);}
@@ -43,6 +50,8 @@
   .pill{flex-shrink:0;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:999px;background:var(--sage);border:1px solid var(--rust);white-space:nowrap;}
   .pill.ok{background:#eef7ee;border-color:#bfe3bf;color:#2e7d32;}
   .pill.no{background:#fdecea;border-color:#e5b4ac;color:#c0392b;}
+  .pill.mid{background:#fff;border-color:var(--line);color:inherit;opacity:.7;}
+  .pill.warn{background:#FFF4E5;border-color:var(--rust);color:#8a5b12;}
   .desc{font-size:13px;line-height:1.6;opacity:.85;margin:12px 0;}
   .acts{display:flex;gap:10px;}
   .approve{flex:1;padding:11px;border-radius:10px;background:#2e7d32;color:#fff;font-weight:700;font-size:13px;border:none;}
@@ -57,8 +66,49 @@
   .seen-tag{display:inline-block;font-size:11px;font-weight:700;color:#8a5b12;background:var(--sage);border-radius:999px;padding:2px 9px;margin-top:6px;}
   .undo{background:none;border:none;font-size:12px;text-decoration:underline;opacity:.65;margin-left:8px;}
   .empty{font-size:14px;opacity:.55;text-align:center;padding:40px 0;}
-  .foot{text-align:center;margin-top:8px;}
-  .foot button{font-size:12px;opacity:.6;text-decoration:underline;background:none;border:none;}
+
+  /* Messages tab */
+  .msg{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  .msg:hover{border-color:var(--rust);box-shadow:0 4px 16px rgba(0,0,0,.06);}
+  .msg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .msg-from{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;}
+  .msg-meta{font-size:12px;opacity:.6;margin-top:3px;line-height:1.5;}
+  .msg-subject{font-size:13.5px;font-weight:700;margin-top:10px;}
+  .msg-preview{font-size:13px;line-height:1.6;opacity:.8;margin-top:4px;}
+  .tag-kind{flex-shrink:0;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:999px;white-space:nowrap;}
+  .tag-kind.customer{background:var(--sage);border:1px solid var(--rust);}
+  .tag-kind.support{background:#e8f0fe;border:1px solid #93b4f2;color:#1a4fab;}
+
+  /* Hosts tab */
+  .host-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px;display:flex;gap:14px;align-items:center;}
+  .host-card a.hn{color:inherit;text-decoration:none;}
+  .host-card a.hn:hover{text-decoration:underline;}
+  .host-ava{width:44px;height:44px;border-radius:50%;background:var(--forest);color:var(--rust);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;flex-shrink:0;border:2px solid var(--sage);}
+  .host-name{font-family:'Poppins',sans-serif;font-size:15.5px;font-weight:700;}
+  .host-meta{font-size:12px;opacity:.6;margin-top:3px;line-height:1.5;}
+  .host-stats{margin-left:auto;text-align:right;flex-shrink:0;}
+  .host-stats b{display:block;font-family:'Poppins',sans-serif;font-size:16px;}
+  .host-stats span{font-size:11px;opacity:.6;}
+
+  /* Message popup */
+  .modal-overlay{position:fixed;inset:0;background:rgba(13,13,13,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100;}
+  .modal-box{background:#fff;border-radius:16px;max-width:460px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;position:relative;}
+  .modal-close{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;}
+  .modal-close:hover{border-color:#c0392b;color:#c0392b;}
+  .modal-from{font-family:'Poppins',sans-serif;font-size:16px;font-weight:700;padding-right:30px;}
+  .modal-meta{font-size:12px;opacity:.6;margin-top:3px;}
+  .modal-subject{font-size:13.5px;font-weight:700;margin-top:14px;}
+  .modal-body{font-size:13.5px;line-height:1.6;opacity:.85;margin-top:6px;}
+  .modal-reply-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;font-weight:700;margin:18px 0 6px;}
+  .modal-box textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);font-size:13.5px;font-family:inherit;outline:none;resize:vertical;}
+  .modal-box textarea:focus{border-color:var(--rust);}
+  .modal-actions{display:flex;gap:10px;margin-top:14px;}
+  .modal-actions button{flex:1;padding:11px;border-radius:10px;font-weight:700;font-size:13px;border:none;}
+  .mm-resolve{background:transparent;border:1.5px solid #2e7d32;color:#2e7d32;}
+  .mm-resolve:hover{background:#eef7ee;}
+  .mm-submit{background:var(--rust);color:#fff;}
+  .mm-submit:hover{opacity:.9;}
+  .modal-status{font-size:12px;opacity:.6;margin-top:8px;text-align:center;min-height:1.2em;}
 </style>
 <style>html.sg-locked body{visibility:hidden}</style>
 <script>document.documentElement.classList.add("sg-locked")</script>
@@ -71,30 +121,108 @@
     <div class="dp" id="userDp"></div>
   </div>
 
-  <div class="title">Review Queue</div>
+  <div class="main-tabs">
+    <button class="main-tab on" data-main="events" type="button">Events review <span class="cnt" id="mainCntEvents"></span></button>
+    <button class="main-tab" data-main="messages" type="button">Messages <span class="cnt" id="mainCntMessages"></span></button>
+    <button class="main-tab" data-main="hosts" type="button">Host <span class="cnt" id="mainCntHosts"></span></button>
+  </div>
 
-  <div class="scope" id="scopeBox"></div>
+  <!-- ===================== EVENTS REVIEW ===================== -->
+  <div id="panel-events">
+    <div class="title">Events review</div>
 
-  <div class="filters">
-    <div class="filters-title"><span>Filter</span><button id="clearBtn" type="button">Clear filters</button></div>
-    <div class="grid">
-      <div><label for="fCategory">Category</label><select id="fCategory"></select></div>
-      <div><label for="fCountry">Country</label><select id="fCountry"></select></div>
-      <div><label for="fState">State / region</label><select id="fState"></select></div>
-      <div><label for="fCity">City</label><select id="fCity"></select></div>
-      <div><label for="fZip">Zip / postal code</label><input id="fZip" type="text" placeholder="e.g. 787"></div>
+    <div class="scope" id="scopeBox"></div>
+
+    <div class="filters">
+      <div class="filters-title"><span>Filter</span><button id="clearBtn" type="button">Clear filters</button></div>
+      <div class="grid">
+        <div><label for="fCategory">Category</label><select id="fCategory"></select></div>
+        <div><label for="fCountry">Country</label><select id="fCountry"></select></div>
+        <div><label for="fState">State / region</label><select id="fState"></select></div>
+        <div><label for="fCity">City</label><select id="fCity"></select></div>
+        <div><label for="fZip">Zip / postal code</label><input id="fZip" type="text" placeholder="e.g. 787"></div>
+      </div>
     </div>
+
+    <div class="tabs">
+      <button class="tab on" data-tab="pending" type="button">Pending <span id="cntPending"></span></button>
+      <button class="tab" data-tab="approved" type="button">Approved <span id="cntApproved"></span></button>
+      <button class="tab" data-tab="flagged" type="button" title="A reviewer flagged this from the event details page; needs a final decision">Flagged for rejection <span id="cntFlagged"></span></button>
+      <button class="tab" data-tab="rejected" type="button">Rejected <span id="cntRejected"></span></button>
+      <button class="tab" data-tab="viewed" type="button" title="Opened, but not approved or rejected yet">Viewed <span id="cntViewed"></span></button>
+    </div>
+
+    <div id="list"></div>
   </div>
 
-  <div class="tabs">
-    <button class="tab on" data-tab="pending" type="button">Pending <span id="cntPending"></span></button>
-    <button class="tab" data-tab="approved" type="button">Approved <span id="cntApproved"></span></button>
-    <button class="tab" data-tab="rejected" type="button">Rejected <span id="cntRejected"></span></button>
-    <button class="tab" data-tab="viewed" type="button" title="Opened, but not approved or rejected yet">Viewed <span id="cntViewed"></span></button>
+  <!-- ===================== MESSAGES ===================== -->
+  <div id="panel-messages" style="display:none;">
+    <div class="title">Messages</div>
+
+    <div class="scope" id="msgScopeBox"></div>
+
+    <div class="filters">
+      <div class="filters-title"><span>Filter</span><button id="msgClearBtn" type="button">Clear filters</button></div>
+      <div class="grid">
+        <div><label for="mfKind">Type</label><select id="mfKind"><option value="">Customer &amp; support</option><option value="customer">Customer</option><option value="support">Support</option></select></div>
+        <div><label for="mfCategory">Category</label><select id="mfCategory"></select></div>
+        <div><label for="mfCountry">Country</label><select id="mfCountry"></select></div>
+        <div><label for="mfState">State / region</label><select id="mfState"></select></div>
+        <div><label for="mfCity">City</label><select id="mfCity"></select></div>
+        <div><label for="mfZip">Zip / postal code</label><input id="mfZip" type="text" placeholder="e.g. 787"></div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab on" data-mtab="open" type="button">Open <span id="cntMsgOpen"></span></button>
+      <button class="tab" data-mtab="resolved" type="button">Resolved <span id="cntMsgResolved"></span></button>
+    </div>
+
+    <div id="msgList"></div>
   </div>
 
-  <div id="list"></div>
-  <div class="foot"><button id="resetBtn" type="button">Reset demo data</button></div>
+  <!-- ===================== HOST ===================== -->
+  <div id="panel-hosts" style="display:none;">
+    <div class="title">Host</div>
+
+    <div class="scope" id="hostScopeBox"></div>
+
+    <div class="filters">
+      <div class="filters-title"><span>Filter</span><button id="hostClearBtn" type="button">Clear filters</button></div>
+      <div class="grid">
+        <div><label for="hfCategory">Category</label><select id="hfCategory"></select></div>
+        <div><label for="hfCountry">Country</label><select id="hfCountry"></select></div>
+        <div><label for="hfState">State / region</label><select id="hfState"></select></div>
+        <div><label for="hfCity">City</label><select id="hfCity"></select></div>
+        <div><label for="hfZip">Zip / postal code</label><input id="hfZip" type="text" placeholder="e.g. 787"></div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab on" data-htab="active" type="button">Active <span id="cntHostActive"></span></button>
+      <button class="tab" data-htab="suspended" type="button">Suspended <span id="cntHostSuspended"></span></button>
+    </div>
+
+    <div id="hostList"></div>
+  </div>
+</div>
+
+<!-- Message popup: opened by clicking a message; Esc or the × button closes it. -->
+<div id="msgModalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <button class="modal-close" id="mmClose" type="button" aria-label="Close">×</button>
+    <div class="modal-from" id="mmFrom"></div>
+    <div class="modal-meta" id="mmMeta"></div>
+    <div class="modal-subject" id="mmSubject"></div>
+    <div class="modal-body" id="mmBody"></div>
+    <div class="modal-reply-lbl">Reply</div>
+    <textarea id="mmReply" rows="4" placeholder="Write a reply…"></textarea>
+    <div class="modal-actions">
+      <button class="mm-resolve" id="mmResolve" type="button">Mark resolved</button>
+      <button class="mm-submit" id="mmSubmit" type="button">Submit</button>
+    </div>
+    <div class="modal-status" id="mmStatus"></div>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -107,6 +235,7 @@
 <script>
 const DEC_KEY      = 'sanga_admin_decisions_v1';
 const VIEWED_KEY   = 'sanga_admin_viewed_v1';   // { [adminId]: { [eventId]: time first/last opened } }
+const MSG_KEY       = 'sanga_admin_messages_v1'; // { [messageId]: { status: 'open'|'resolved', reply: '…' } }
 
 // Names for the sample people (matches the Admin Settings page).
 function jget(k, d){ try{ return JSON.parse(localStorage.getItem(k)) || d; }catch(e){ return d; } }
@@ -114,6 +243,7 @@ function jset(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 const emptyScope = () => ({ countries:[], states:[], cities:[], zips:[], categories:[] });
 const normScope = (s) => Object.assign(emptyScope(), s || {});
+const initials = n => String(n || '').split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
 
 // Sample events. Location is split into country / state / city / zip so it can be filtered;
 // the rest (date, price, includes…) is what the event details page displays.
@@ -131,6 +261,89 @@ const EVENTS = [
   { id:'e11', title:'Bay Area Sustainability Meetup',country:'United States',        state:'California',  city:'San Francisco', zip:'94103',    category:'Sustainability',   audience:'Group',    host:'Noah Kim',        dateDisplay:'Thu, Dec 3, 2026',  timeDisplay:'6:30 PM – 8:30 PM',  duration:'2 hours',   price:'0',  groupSize:'Up to 40 guests',    includes:['Light snacks'],                                       cancellation:'Free event — no cancellation fee.',            description:'An evening of short talks and swaps on sustainable living, with light snacks and time to connect.' },
   { id:'e12', title:'Boulder Creek Hike',            country:'United States',        state:'Colorado',    city:'Boulder',       zip:'80302',    category:'Hiking',           audience:'Everyone', host:'Emily Ward',      dateDisplay:'Sat, Dec 12, 2026', timeDisplay:'9:00 AM – 11:00 AM', duration:'2 hours',   price:'10', groupSize:'Up to 15 guests',    includes:['Picnic by the creek','Trail guide'],                  cancellation:'Full refund up to 24 hours before the event.', description:'An easy two-hour creekside hike suitable for beginners, ending with a picnic by the water.' },
 ];
+
+/* Sample support/customer messages — still sample data, like the review queue, until messages
+   move into Firestore. Scoped to the admin the same way events are: by country/state/city. */
+const MESSAGES = [
+  { id:'m1', kind:'customer', from:'Priya Nair',      country:'India',          state:'Uttarakhand', city:'Rishikesh',     zip:'249201', category:'Junior Yoga',      subject:'Refund for cancelled sunrise yoga',  preview:'Hi, the host cancelled Sunrise Yoga by the Ganges and I haven’t seen my refund yet.', dateDisplay:'Oct 1, 2026', status:'open' },
+  { id:'m2', kind:'support',  from:'Jordan Lee (host)', country:'United States', state:'Texas',       city:'Austin',        zip:'78701',  category:'Sattvic Cooking',  subject:'Can I change my brunch group size?', preview:'I’d like to raise the cap on Plant-Based Brunch Circle from 12 to 16 guests, is that possible?', dateDisplay:'Sep 29, 2026', status:'open' },
+  { id:'m3', kind:'customer', from:'Dana Whitfield',  country:'United States',  state:'Colorado',    city:'Denver',        zip:'80202',  category:'Nature Explorers', subject:'Trouble booking Forest Bathing Walk', preview:'The app keeps showing an error when I try to pay for this event.', dateDisplay:'Sep 28, 2026', status:'open' },
+  { id:'m4', kind:'support',  from:'Hannah Price (host)', country:'United Kingdom', state:'England', city:'London',        zip:'SW1A 1AA', category:'Storytelling',   subject:'Verification badge missing',         preview:'My ID was approved last week but my profile still doesn’t show the verified badge.', dateDisplay:'Sep 26, 2026', status:'resolved' },
+  { id:'m5', kind:'customer', from:'Omar Haddad',     country:'United Arab Emirates', state:'Dubai', city:'Dubai',         zip:'',       category:'Sky Gazing',       subject:'Is the stargazing event family-friendly?', preview:'Can I bring my two kids, ages 7 and 10, to the stargazing night?', dateDisplay:'Sep 24, 2026', status:'resolved' },
+  { id:'m6', kind:'customer', from:'Ravi Shankar',    country:'India',          state:'Karnataka',   city:'Bengaluru',     zip:'560001', category:'Public Speaking',  subject:'Host didn’t show up',           preview:'No one from Public Speaking Without Fear showed up at the venue today.', dateDisplay:'Sep 20, 2026', status:'open' },
+  { id:'m7', kind:'support',  from:'Chris Doyle (host)', country:'United States', state:'Texas',      city:'Austin',        zip:'78704',  category:'Mindful Baking',   subject:'Payout for Mindful Sourdough Baking', preview:'My payout for last week’s class still shows as pending, can you check?', dateDisplay:'Sep 18, 2026', status:'open' },
+  { id:'m8', kind:'customer', from:'Lucia Fernandez', country:'Mexico',         state:'Mexico City', city:'Mexico City',   zip:'06000',  category:'Sustainability',   subject:'Allergy question before booking',    preview:'Does the Zero-Waste Home Workshop use any tree nuts in the recipes?', dateDisplay:'Sep 15, 2026', status:'resolved' },
+  { id:'m9', kind:'customer', from:'Noah Kim',        country:'United States',  state:'California',  city:'San Francisco', zip:'94103',  category:'Sustainability',   subject:'Wrong address on the listing',       preview:'The meetup address for the Bay Area Sustainability Meetup points to the wrong building.', dateDisplay:'Sep 10, 2026', status:'open' },
+  { id:'m10',kind:'support',  from:'Emily Ward (host)', country:'United States', state:'Colorado',    city:'Boulder',       zip:'80302',  category:'Hiking',           subject:'Adding a co-host',                   preview:'Can my friend be listed as a co-host on Boulder Creek Hike going forward?', dateDisplay:'Sep 8, 2026',  status:'resolved' },
+];
+
+/* Sample host directory — one row per person who hosts events, filtered to the admin's scope
+   the same way the review queue is. Will come from Firestore host profiles later. */
+const HOSTS = [
+  { id:'',  name:'Meera Iyer',      country:'India',                state:'Uttarakhand', city:'Rishikesh',     zip:'249201', category:'Junior Yoga',      eventsHosted:14, rating:4.9, joinedDisplay:'Jan 2025', status:'active' },
+  { id:'',  name:'Jordan Lee',      country:'United States',        state:'Texas',       city:'Austin',        zip:'78701',  category:'Sattvic Cooking',  eventsHosted:22, rating:4.8, joinedDisplay:'Mar 2024', status:'active' },
+  { id:'',  name:'Sam Ortiz',       country:'United States',        state:'Colorado',    city:'Denver',        zip:'80202',  category:'Nature Explorers', eventsHosted:9,  rating:4.7, joinedDisplay:'Jun 2025', status:'active' },
+  { id:'',  name:'Hannah Price',    country:'United Kingdom',       state:'England',     city:'London',        zip:'SW1A 1AA', category:'Storytelling',   eventsHosted:31, rating:5.0, joinedDisplay:'Nov 2023', status:'active' },
+  { id:'',  name:'Omar Khalid',     country:'United Arab Emirates', state:'Dubai',       city:'Dubai',         zip:'',       category:'Sky Gazing',       eventsHosted:6,  rating:4.6, joinedDisplay:'Aug 2025', status:'active' },
+  { id:'',  name:'Divya Rao',       country:'India',                state:'Karnataka',   city:'Bengaluru',     zip:'560001', category:'Public Speaking',  eventsHosted:18, rating:4.5, joinedDisplay:'Feb 2024', status:'suspended' },
+  { id:'',  name:'Chris Doyle',     country:'United States',        state:'Texas',       city:'Austin',        zip:'78704',  category:'Mindful Baking',   eventsHosted:27, rating:4.9, joinedDisplay:'May 2024', status:'active' },
+  { id:'',  name:'Lucia Fernandez', country:'Mexico',               state:'Mexico City', city:'Mexico City',   zip:'06000',  category:'Sustainability',   eventsHosted:11, rating:4.8, joinedDisplay:'Jul 2025', status:'active' },
+  { id:'',  name:'Rohit Negi',      country:'India',                state:'Uttarakhand', city:'Dehradun',      zip:'248001', category:'Hiking',           eventsHosted:8,  rating:4.4, joinedDisplay:'Sep 2025', status:'suspended' },
+  { id:'',  name:'Alicia Brooks',   country:'United States',        state:'Texas',       city:'Houston',       zip:'77002',  category:'Mindful Baking',   eventsHosted:16, rating:4.9, joinedDisplay:'Apr 2024', status:'active' },
+  { id:'',  name:'Noah Kim',        country:'United States',        state:'California',  city:'San Francisco', zip:'94103', category:'Sustainability',   eventsHosted:5,  rating:4.3, joinedDisplay:'Oct 2025', status:'active' },
+  { id:'',  name:'Emily Ward',      country:'United States',        state:'Colorado',    city:'Boulder',       zip:'80302',  category:'Hiking',           eventsHosted:13, rating:4.7, joinedDisplay:'Dec 2024', status:'active' },
+];
+
+/* ---- sample host PROFILES, so clicking a host in this tab shows a real-looking profile page
+   (bio, interests, "love to learn", stats) instead of just a name. None of these hosts has a real
+   account yet (id is ''), so there's nothing for host_profile_view.html / user_profile_view.html to
+   look up — the whole profile is built here and passed in the link as ?demo=<json>, the same way
+   sample events pass their details in eventDetailUrl(). Once hosts have real accounts, pass a real
+   id instead and drop the demo param; the profile pages already prefer id over demo. */
+const DEMO_PRACTICE_SETS = [
+  ['journaling', 'gratitude'], ['naturewalks', 'forest'], ['breathwork', 'vinyasa'],
+  ['mindfuleating', 'plantbased'], ['soundhealing', 'restorative'], ['taichi', 'coldplunge'],
+];
+// Square-card event lists (saved / hosted / upcoming / attended) are built from the same sample
+// EVENTS array the review queue uses, so they look like real listings rather than placeholder text.
+const eventBox = (e) => ({ title: e.title, dateDisplay: e.dateDisplay, category: e.category, price: e.price });
+function pickEvents(start, count){
+  const out = [];
+  for(let i = 0; i < count; i++) out.push(EVENTS[(start + i) % EVENTS.length]);
+  return out.map(eventBox);
+}
+function hostDemoProfile(h, idx){
+  const place = [h.city, h.country].filter(Boolean).join(', ');
+  return {
+    name: h.name,
+    bio: `${h.name} has been hosting ${h.category} experiences${place ? ' in ' + place : ''} since ${h.joinedDisplay}. ` +
+         (h.rating >= 4.8 ? 'Known for warm, well-run gatherings.' : 'Loves bringing people together for shared experiences.'),
+    intentionLabel: "Today's intention",
+    intentionText: 'Create a space where everyone feels welcome.',
+    interests: [h.category, 'Community building'].filter(Boolean),
+    practices: DEMO_PRACTICE_SETS[idx % DEMO_PRACTICE_SETS.length],
+    location: { city: h.city, state: h.state, country: h.country },
+    privacy: { showProfile: true, showCity: true, allowMessages: true, showReservations: true },
+    hidden: { profile: false, city: false, reservations: false },
+    statJoined: Math.max(1, Math.round(h.eventsHosted * 2.2)),
+    statCities: h.city ? 1 : 0,
+    statHosted: h.eventsHosted,
+    savedEvents: pickEvents(idx * 2 + 1, 3),
+    hostedEvents: EVENTS.filter(e => e.host === h.name).map(eventBox),
+    upcomingEvents: pickEvents(idx * 2 + 5, 2),
+    attendedEvents: pickEvents(idx * 3 + 2, 4),
+  };
+}
+// Same routing SanghaAdmin.profileUrl uses (main admin -> full profile, normal admin -> privacy-filtered
+// view), plus the demo profile data so the page has something to show.
+function hostProfileLink(h, idx){
+  const main = !!(SanghaAdmin.admin && SanghaAdmin.admin.role === 'main');
+  const q = new URLSearchParams();
+  if(h.id) q.set('id', h.id);
+  q.set('name', h.name);
+  q.set('demo', JSON.stringify(hostDemoProfile(h, idx)));
+  return (main ? '/host_profile_view.html' : '/user_profile_view.html') + '?' + q.toString();
+}
 
 /* ---- link to the event details page ----
    Opens event_detail_view.html read-only (readonly=1 hides the message-host and share
@@ -189,14 +402,17 @@ let decisions = jget(DEC_KEY, {});
 let tab = 'pending';
 const f = { category:'', country:'', state:'', city:'', zip:'' };
 
-function inScope(ev, s){
+// Everything an admin's scope can narrow: countries/states/cities/zips always; categories only
+// matters for events and hosts (messages don't have one).
+function inScope(item, s, opts){
   if(!s) return true;
+  opts = opts || {};
   const ci = (a, v) => a.some(x => x.toLowerCase() === String(v || '').toLowerCase());
-  if(s.countries.length && !ci(s.countries, ev.country)) return false;
-  if(s.states.length && !ci(s.states, ev.state)) return false;
-  if(s.cities.length && !ci(s.cities, ev.city)) return false;
-  if(s.zips.length && !s.zips.some(z => String(ev.zip || '').toLowerCase().startsWith(z.toLowerCase()))) return false;
-  if(s.categories.length && !s.categories.includes(ev.category)) return false;
+  if(s.countries.length && !ci(s.countries, item.country)) return false;
+  if(s.states.length && !ci(s.states, item.state)) return false;
+  if(s.cities.length && !ci(s.cities, item.city)) return false;
+  if(!opts.noZip && s.zips.length && !s.zips.some(z => String(item.zip || '').toLowerCase().startsWith(z.toLowerCase()))) return false;
+  if(!opts.noCategory && s.categories.length && !s.categories.includes(item.category)) return false;
   return true;
 }
 const baseEvents = () => EVENTS.filter(e => inScope(e, myScope));
@@ -227,14 +443,14 @@ function passes(e){
       && (!f.zip      || String(e.zip || '').toLowerCase().startsWith(f.zip.toLowerCase()));
 }
 
-function scopeText(){
+function scopeText(withCategories){
   const parts = [];
   if(myScope.countries.length)  parts.push(`countries: <b>${esc(myScope.countries.join(', '))}</b>`);
   if(myScope.states.length)     parts.push(`states: <b>${esc(myScope.states.join(', '))}</b>`);
   if(myScope.cities.length)     parts.push(`cities: <b>${esc(myScope.cities.join(', '))}</b>`);
   if(myScope.zips.length)       parts.push(`zip codes: <b>${esc(myScope.zips.join(', '))}</b>`);
-  if(myScope.categories.length) parts.push(`categories: <b>${esc(myScope.categories.join(', '))}</b>`);
-  return parts.length ? 'You review ' + parts.join(' &nbsp;·&nbsp; ') : "You review <b>every</b> event — the main admin hasn't narrowed your scope yet.";
+  if(withCategories !== false && myScope.categories.length) parts.push(`categories: <b>${esc(myScope.categories.join(', '))}</b>`);
+  return parts.length ? 'You see ' + parts.join(' &nbsp;·&nbsp; ') : '';   // nothing narrowed yet: no box to show
 }
 
 /* ---- "Viewed" = events this admin has opened to read the details ---- */
@@ -249,6 +465,8 @@ function groups(){
   return {
     pending:  visible.filter(e => !decisions[e.id]),
     approved: visible.filter(e => decisions[e.id] && decisions[e.id].status === 'approved'),
+    // Flagged from the event details page by any reviewer; waits here for a final approve/reject.
+    flagged:  visible.filter(e => decisions[e.id] && decisions[e.id].status === 'flagged'),
     rejected: visible.filter(e => decisions[e.id] && decisions[e.id].status === 'rejected'),
     // Viewed = opened, but not decided yet (opened − approved − rejected). Once you approve or
     // reject an event it moves to Approved/Rejected; Undo brings it back here if it was opened.
@@ -257,7 +475,8 @@ function groups(){
 }
 function refreshCounts(){
   const g = groups();
-  ['Pending','Approved','Rejected','Viewed'].forEach(n => { document.getElementById('cnt' + n).textContent = `(${g[n.toLowerCase()].length})`; });
+  ['Pending','Approved','Flagged','Rejected','Viewed'].forEach(n => { document.getElementById('cnt' + n).textContent = `(${g[n.toLowerCase()].length})`; });
+  document.getElementById('mainCntEvents').textContent = `(${g.pending.length})`;
 }
 // Called when an event's details are opened. Updates in place (no re-draw), so the
 // link/click that triggered it is never interrupted.
@@ -273,6 +492,7 @@ function markViewed(id){
 const EMPTY = {
   pending:  ['Nothing waiting for review right now. 🎉', 'No pending events match these filters.'],
   approved: ['No approved events yet.', 'No approved events match these filters.'],
+  flagged:  ['Nothing flagged for rejection right now.', 'No flagged events match these filters.'],
   rejected: ['No rejected events yet.', 'No rejected events match these filters.'],
   viewed:   ["Nothing here. Events you open but haven't approved or rejected yet show up in this tab.", 'No viewed events match these filters.'],
 };
@@ -280,7 +500,7 @@ const EMPTY = {
 function render(){
   renderFilters();
   refreshCounts();
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
+  document.querySelectorAll('#panel-events .tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
 
   const list = document.getElementById('list');
   const shown = groups()[tab];
@@ -293,6 +513,11 @@ function render(){
   list.innerHTML = shown.map(e => {
     const d = decisions[e.id];
     const place = [e.city, e.state, e.country].filter(Boolean).join(', ') + (e.zip ? ' · ' + e.zip : '');
+    const pillClass = !d ? '' : d.status === 'approved' ? 'ok' : d.status === 'flagged' ? 'warn' : 'no';
+    const pillText = !d ? esc(e.audience) : d.status === 'approved' ? 'Approved' : d.status === 'flagged' ? 'Flagged' : 'Rejected';
+    // A decided (approved/rejected) event is final, with Undo. A flagged one — set either here or
+    // from the event details page's "Flag for rejection" button — still needs Approve/Reject below;
+    // its note just explains why it's here, with "Clear flag" instead of Undo.
     return `
     <div class="ev" data-id="${e.id}">
       <div class="ev-head">
@@ -301,11 +526,13 @@ function render(){
           <div class="ev-meta">${esc(place)}<br>${esc(e.category)} · hosted by ${esc(e.host)}</div>
           <div class="seen-slot">${seen[e.id] ? seenTag : ''}</div>
         </div>
-        <span class="pill ${d ? (d.status === 'approved' ? 'ok' : 'no') : ''}">${d ? (d.status === 'approved' ? 'Approved' : 'Rejected') : esc(e.audience)}</span>
+        <span class="pill ${pillClass}">${pillText}</span>
       </div>
       <div class="desc">${esc(e.description)}</div>
       <a class="view-link" href="${esc(eventDetailUrl(e))}" target="_blank" rel="noopener">View full details →</a>
-      ${d ? `<div class="note">${d.status === 'rejected' && d.reason ? 'Reason given: “' + esc(d.reason) + '”' : (d.status === 'approved' ? 'This event would now appear publicly.' : 'No reason was given.')}<button class="undo" data-undo="${e.id}" type="button">Undo</button></div>` : `
+      ${d && d.status !== 'flagged' ? `<div class="note">${d.status === 'rejected' && d.reason ? 'Reason given: “' + esc(d.reason) + '”' : (d.status === 'approved' ? 'This event would now appear publicly.' : 'No reason was given.')}<button class="undo" data-undo="${e.id}" type="button">Undo</button></div>` : ''}
+      ${d && d.status === 'flagged' ? `<div class="note">🚩 Flagged for rejection from the event details page — needs a final decision.<button class="undo" data-undo="${e.id}" type="button">Clear flag</button></div>` : ''}
+      ${!d || d.status === 'flagged' ? `
       <div class="acts">
         <button class="approve" data-approve="${e.id}" type="button">Approve</button>
         <button class="reject" data-reject="${e.id}" type="button">Reject</button>
@@ -313,7 +540,7 @@ function render(){
       <div class="reason" id="reason-${e.id}">
         <input type="text" id="reasonIn-${e.id}" placeholder="Reason (optional) — shown to the host">
         <button class="confirm" data-confirm="${e.id}" type="button">Confirm reject</button>
-      </div>`}
+      </div>` : ''}
     </div>`;
   }).join('');
 
@@ -336,6 +563,170 @@ function render(){
   list.querySelectorAll('[data-undo]').forEach(b => b.onclick = () => { delete decisions[b.dataset.undo]; jset(DEC_KEY, decisions); render(); });
 }
 
+/* ===================== MESSAGES ===================== */
+const mf = { kind:'', category:'', country:'', state:'', city:'', zip:'' };
+let mtab = 'open';
+let msgStore = jget(MSG_KEY, {});   // local reply/resolved overrides, same pattern as `decisions` above
+const msgStatus = (m) => (msgStore[m.id] && msgStore[m.id].status) || m.status;
+const msgReply  = (m) => (msgStore[m.id] && msgStore[m.id].reply) || '';
+const baseMessages = () => MESSAGES.filter(m => inScope(m, myScope, { noZip:true, noCategory:true }));
+function passesMsg(m){
+  return (!mf.kind     || m.kind === mf.kind)
+      && (!mf.category || m.category === mf.category)
+      && (!mf.country  || m.country === mf.country)
+      && (!mf.state    || m.state === mf.state)
+      && (!mf.city     || m.city === mf.city)
+      && (!mf.zip      || String(m.zip || '').toLowerCase().startsWith(mf.zip.toLowerCase()));
+}
+function renderMsgFilters(){
+  const base = baseMessages();
+  document.getElementById('mfKind').value = mf.kind;
+  mf.category = fill('mfCategory', uniq(base.map(m => m.category)), mf.category, 'All categories');
+  mf.country = fill('mfCountry', uniq(base.map(m => m.country)), mf.country, 'All countries');
+  const inCountry = base.filter(m => !mf.country || m.country === mf.country);
+  mf.state = fill('mfState', uniq(inCountry.map(m => m.state)), mf.state, 'All states');
+  const inState = inCountry.filter(m => !mf.state || m.state === mf.state);
+  mf.city = fill('mfCity', uniq(inState.map(m => m.city)), mf.city, 'All cities');
+}
+function msgGroups(){
+  const visible = baseMessages().filter(passesMsg);
+  return { open: visible.filter(m => msgStatus(m) === 'open'), resolved: visible.filter(m => msgStatus(m) === 'resolved') };
+}
+const MSG_EMPTY = {
+  open:     ['Nothing open right now. 🎉', 'No open messages match these filters.'],
+  resolved: ['No resolved messages yet.', 'No resolved messages match these filters.'],
+};
+function renderMessages(){
+  renderMsgFilters();
+  const g = msgGroups();
+  document.getElementById('cntMsgOpen').textContent = `(${g.open.length})`;
+  document.getElementById('cntMsgResolved').textContent = `(${g.resolved.length})`;
+  document.getElementById('mainCntMessages').textContent = `(${g.open.length})`;
+  document.querySelectorAll('#panel-messages .tab').forEach(t => t.classList.toggle('on', t.dataset.mtab === mtab));
+
+  const list = document.getElementById('msgList');
+  const shown = g[mtab];
+  if(!shown.length){
+    const filtering = mf.kind || mf.category || mf.country || mf.state || mf.city || mf.zip;
+    list.innerHTML = `<div class="empty">${MSG_EMPTY[mtab][filtering ? 1 : 0]}</div>`;
+    return;
+  }
+  list.innerHTML = shown.map(m => {
+    const place = [m.city, m.state, m.country].filter(Boolean).join(', ');
+    return `
+    <div class="msg" data-id="${m.id}">
+      <div class="msg-head">
+        <div>
+          <div class="msg-from">${esc(m.from)}</div>
+          <div class="msg-meta">${esc(place)} · ${esc(m.dateDisplay)}</div>
+        </div>
+        <span class="tag-kind ${m.kind}">${m.kind === 'support' ? 'Support' : 'Customer'}</span>
+      </div>
+      <div class="msg-subject">${esc(m.subject)}</div>
+      <div class="msg-preview">${esc(m.preview)}</div>
+      ${msgReply(m) ? '<span class="seen-tag">✓ Replied</span>' : ''}
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.msg').forEach(card => card.addEventListener('click', () => openMsgModal(card.dataset.id)));
+}
+
+/* ---- message popup: full message, a reply box, Submit and Mark resolved ---- */
+let mmId = null;
+function openMsgModal(id){
+  const m = MESSAGES.find(x => x.id === id);
+  if(!m) return;
+  mmId = id;
+  const place = [m.city, m.state, m.country].filter(Boolean).join(', ');
+  document.getElementById('mmFrom').textContent = m.from;
+  document.getElementById('mmMeta').textContent = place + ' · ' + m.dateDisplay;
+  document.getElementById('mmSubject').textContent = m.subject;
+  document.getElementById('mmBody').textContent = m.preview;
+  document.getElementById('mmReply').value = msgReply(m);
+  document.getElementById('mmStatus').textContent = '';
+  document.getElementById('mmResolve').textContent = msgStatus(m) === 'resolved' ? 'Already resolved' : 'Mark resolved';
+  document.getElementById('mmResolve').disabled = msgStatus(m) === 'resolved';
+  document.getElementById('msgModalOverlay').style.display = 'flex';
+  document.getElementById('mmReply').focus();
+}
+function closeMsgModal(){
+  document.getElementById('msgModalOverlay').style.display = 'none';
+  mmId = null;
+}
+function saveMsgState(patch){
+  msgStore = jget(MSG_KEY, {});
+  msgStore[mmId] = Object.assign({ status: 'open' }, msgStore[mmId], patch);
+  jset(MSG_KEY, msgStore);
+}
+document.getElementById('mmClose').onclick = closeMsgModal;
+document.getElementById('msgModalOverlay').addEventListener('click', (e) => { if(e.target.id === 'msgModalOverlay') closeMsgModal(); });
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && document.getElementById('msgModalOverlay').style.display !== 'none') closeMsgModal(); });
+document.getElementById('mmSubmit').onclick = () => {
+  const reply = document.getElementById('mmReply').value.trim();
+  saveMsgState({ reply });
+  document.getElementById('mmStatus').textContent = reply ? 'Reply sent ✓' : 'Saved ✓';
+  renderMessages();
+  setTimeout(closeMsgModal, 500);
+};
+document.getElementById('mmResolve').onclick = () => {
+  saveMsgState({ status: 'resolved' });
+  renderMessages();
+  closeMsgModal();
+};
+
+/* ===================== HOSTS ===================== */
+const hf = { category:'', country:'', state:'', city:'', zip:'' };
+let htab = 'active';
+const baseHosts = () => HOSTS.filter(h => inScope(h, myScope, { noZip:true }));
+function passesHost(h){
+  return (!hf.category || h.category === hf.category)
+      && (!hf.country  || h.country === hf.country)
+      && (!hf.state    || h.state === hf.state)
+      && (!hf.city     || h.city === hf.city)
+      && (!hf.zip      || String(h.zip || '').toLowerCase().startsWith(hf.zip.toLowerCase()));
+}
+function renderHostFilters(){
+  const base = baseHosts();
+  hf.category = fill('hfCategory', uniq(base.map(h => h.category)), hf.category, 'All categories');
+  hf.country  = fill('hfCountry',  uniq(base.map(h => h.country)),  hf.country,  'All countries');
+  const inCountry = base.filter(h => !hf.country || h.country === hf.country);
+  hf.state    = fill('hfState',    uniq(inCountry.map(h => h.state)), hf.state, 'All states');
+  const inState = inCountry.filter(h => !hf.state || h.state === hf.state);
+  hf.city     = fill('hfCity',     uniq(inState.map(h => h.city)),  hf.city,     'All cities');
+}
+function hostGroups(){
+  const visible = baseHosts().filter(passesHost);
+  return { active: visible.filter(h => h.status === 'active'), suspended: visible.filter(h => h.status === 'suspended') };
+}
+const HOST_EMPTY = {
+  active:    ['No active hosts match these filters.', 'No active hosts match these filters.'],
+  suspended: ['No suspended hosts.', 'No suspended hosts match these filters.'],
+};
+function renderHosts(){
+  renderHostFilters();
+  const g = hostGroups();
+  document.getElementById('cntHostActive').textContent = `(${g.active.length})`;
+  document.getElementById('cntHostSuspended').textContent = `(${g.suspended.length})`;
+  document.getElementById('mainCntHosts').textContent = `(${g.active.length + g.suspended.length})`;
+  document.querySelectorAll('#panel-hosts .tab').forEach(t => t.classList.toggle('on', t.dataset.htab === htab));
+
+  const list = document.getElementById('hostList');
+  const shown = g[htab];
+  if(!shown.length){ list.innerHTML = `<div class="empty">${HOST_EMPTY[htab][1]}</div>`; return; }
+  list.innerHTML = shown.map(h => {
+    const place = [h.city, h.state, h.country].filter(Boolean).join(', ');
+    const url = esc(hostProfileLink(h, HOSTS.indexOf(h)));
+    return `
+    <div class="host-card">
+      <div class="host-ava">${initials(h.name)}</div>
+      <div>
+        <div class="host-name"><a class="hn" href="${url}" target="_blank" rel="noopener">${esc(h.name)}</a>${h.status === 'suspended' ? ' <span class="pill no" style="margin-left:6px;">Suspended</span>' : ''}</div>
+        <div class="host-meta">${esc(place)} · ${esc(h.category)}<br>Hosting since ${esc(h.joinedDisplay)}</div>
+      </div>
+      <div class="host-stats"><b>${esc(h.eventsHosted)}</b><span>events</span><b style="margin-top:6px;">${esc(h.rating.toFixed(1))}★</b><span>rating</span></div>
+    </div>`;
+  }).join('');
+}
+
 function renderUserChip(){
   const u = getCurrentAdmin();
   document.getElementById('userName').textContent = u.name;
@@ -346,27 +737,76 @@ function renderUserChip(){
   else dp.textContent = u.name.split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase();
 }
 
+let mainTab = 'events';
+function renderMainTabs(){
+  document.querySelectorAll('.main-tab').forEach(t => t.classList.toggle('on', t.dataset.main === mainTab));
+  document.getElementById('panel-events').style.display   = mainTab === 'events'   ? '' : 'none';
+  document.getElementById('panel-messages').style.display = mainTab === 'messages' ? '' : 'none';
+  document.getElementById('panel-hosts').style.display    = mainTab === 'hosts'    ? '' : 'none';
+}
+document.querySelectorAll('.main-tab').forEach(t => t.onclick = () => { mainTab = t.dataset.main; renderMainTabs(); });
+
+// Shows the scope box only when the admin's scope actually narrows something; hidden for a main
+// admin (who sees everything) and for a normal admin with no limits set yet (same thing from
+// their point of view — nothing to explain).
+function setScopeBox(elId, withCategories){
+  const el = document.getElementById(elId);
+  const txt = isMain ? '' : scopeText(withCategories);
+  el.style.display = txt ? '' : 'none';
+  el.innerHTML = txt;
+}
+
 function applyIdentity(){
   loadIdentity();
   renderUserChip();
   viewedAll = jget(VIEWED_KEY, {});
+  msgStore = jget(MSG_KEY, {});
   f.category = f.country = f.state = f.city = f.zip = '';
   document.getElementById('fZip').value = '';
-  tab = 'pending';
-  // The main admin sees everything, so there is nothing to explain; a normal admin gets their scope spelled out.
-  const box = document.getElementById('scopeBox');
-  box.style.display = isMain ? 'none' : '';
-  box.innerHTML = isMain ? '' : scopeText();
+  mf.kind = mf.category = mf.country = mf.state = mf.city = mf.zip = '';
+  document.getElementById('mfZip').value = '';
+  hf.category = hf.country = hf.state = hf.city = hf.zip = '';
+  document.getElementById('hfZip').value = '';
+  tab = 'pending'; mtab = 'open'; htab = 'active';
+  setScopeBox('scopeBox', true);
+  setScopeBox('msgScopeBox', false);
+  setScopeBox('hostScopeBox', true);
+  renderMainTabs();
   render();
+  renderMessages();
+  renderHosts();
 }
 ['fCategory','fCountry','fState','fCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
   f[{fCategory:'category', fCountry:'country', fState:'state', fCity:'city'}[id]] = e.target.value; render();
 }));
 document.getElementById('fZip').addEventListener('input', e => { f.zip = e.target.value.trim(); render(); });
 document.getElementById('clearBtn').onclick = () => { f.category = f.country = f.state = f.city = f.zip = ''; document.getElementById('fZip').value = ''; render(); };
-document.querySelectorAll('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; render(); });
-document.getElementById('resetBtn').onclick = () => { decisions = {}; viewedAll = {}; jset(DEC_KEY, decisions); jset(VIEWED_KEY, viewedAll); render(); };
+document.querySelectorAll('#panel-events .tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; render(); });
+
+['mfKind','mfCategory','mfCountry','mfState','mfCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
+  mf[{mfKind:'kind', mfCategory:'category', mfCountry:'country', mfState:'state', mfCity:'city'}[id]] = e.target.value; renderMessages();
+}));
+document.getElementById('mfZip').addEventListener('input', e => { mf.zip = e.target.value.trim(); renderMessages(); });
+document.getElementById('msgClearBtn').onclick = () => { mf.kind = mf.category = mf.country = mf.state = mf.city = mf.zip = ''; document.getElementById('mfZip').value = ''; renderMessages(); };
+document.querySelectorAll('#panel-messages .tab').forEach(t => t.onclick = () => { mtab = t.dataset.mtab; renderMessages(); });
+
+['hfCategory','hfCountry','hfState','hfCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
+  hf[{hfCategory:'category', hfCountry:'country', hfState:'state', hfCity:'city'}[id]] = e.target.value; renderHosts();
+}));
+document.getElementById('hfZip').addEventListener('input', e => { hf.zip = e.target.value.trim(); renderHosts(); });
+document.getElementById('hostClearBtn').onclick = () => { hf.category = hf.country = hf.state = hf.city = hf.zip = ''; document.getElementById('hfZip').value = ''; renderHosts(); };
+document.querySelectorAll('#panel-hosts .tab').forEach(t => t.onclick = () => { htab = t.dataset.htab; renderHosts(); });
+
 SanghaAdmin.ready.then(ok => { if(ok) applyIdentity(); });
+
+// Approve / Flag for rejection on the event details page (opened in a new tab) writes to this
+// same key. 'storage' only fires in OTHER tabs, which is exactly this case: pick up the change
+// the moment this tab is back in focus, no polling needed.
+window.addEventListener('storage', (ev) => {
+  if(ev.key !== DEC_KEY) return;
+  decisions = jget(DEC_KEY, {});
+  render();
+});
 </script>
 </body>
 </html>

@@ -55,11 +55,15 @@
 
     if (!rec.exists) {   // a normal Sanga account that is not an admin (yet): ask for access automatically
       gate('<div style="opacity:.6">Sending your request…</div>');
-      var status = '';
+      var status = '', why = '';
       try {
         var asked = await sanghaFunctions.httpsCallable('requestAdminAccess')();
         status = (asked && asked.data && asked.data.status) || '';
-      } catch (e) { status = ''; }
+      } catch (e) {
+        status = '';
+        why = (e && (e.code || e.message)) || 'unknown error';
+        if (window.console) console.warn('requestAdminAccess failed:', e);
+      }
 
       if (status === 'admin') { window.location.reload(); return false; }   // approved while this page was open
 
@@ -77,7 +81,7 @@
           '<button id="sgOut" style="' + BTN + '">Log out</button>');
       } else {   // we could not ask (for example the function is not deployed yet): the older screen
         gate('<h2 style="margin:0 0 6px">This account isn\'t an admin</h2>' + signedAs.replace('</div>', '<br>We could not send your request automatically. Send this account ID to the main admin:</div>') +
-          idBox + '<button id="sgOut" style="' + BTN + '">Log out</button>');
+          idBox + '<div style="margin-top:8px;font-size:12px;opacity:.5;">Reason: ' + esc(why || 'no answer') + '</div>' + '<button id="sgOut" style="' + BTN + '">Log out</button>');
       }
       document.getElementById('sgOut').onclick = logOut;
       return false;
@@ -88,7 +92,7 @@
       role: isMain ? 'main' : 'admin',
       userId: session.id,
       name: d.name || session.name || session.phone || 'Admin',
-      roleLabel: isMain ? 'Full access' : 'Admin · review only',
+      roleLabel: isMain ? 'Full access' : 'Admin',
       avatar: '',
       scope: isMain ? null : {
         countries: d.countries || [], states: d.states || [], cities: d.cities || [], zips: d.zips || [], categories: d.categories || []

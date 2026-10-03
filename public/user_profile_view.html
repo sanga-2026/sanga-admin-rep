@@ -40,6 +40,24 @@
   .tags-frame{background:var(--forest);border:1px solid rgba(242,169,78,.55);border-radius:14px;padding:14px;display:flex;flex-wrap:wrap;gap:8px;}
   .tag{font-size:12.5px;padding:7px 14px;border-radius:999px;border:1px solid var(--rust);background:rgba(255,255,255,.06);color:#fff;}
   .loading, .private-note{text-align:center;opacity:.6;font-size:14px;padding:50px 20px;line-height:1.6;}
+
+  /* Events — saved / hosted / upcoming / attended. One row per kind, each a left-to-right scroll
+     of square cards, stacked below each other. Hidden (per row) when that kind has nothing, and the
+     whole block hidden when the person has turned reservations off in their privacy settings. */
+  .ev-sub{margin-top:24px;}
+  .ev-sub:first-child{margin-top:0;}
+  .ev-row{display:flex;gap:16px;overflow-x:auto;padding:2px 2px 10px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;}
+  .ev-row::-webkit-scrollbar{height:6px;}
+  .ev-row::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px;}
+  .ev-card{flex:0 0 148px;width:148px;scroll-snap-align:start;}
+  .ev-thumb{position:relative;width:148px;height:148px;border-radius:16px;overflow:hidden;}
+  .ev-badge{position:absolute;top:10px;left:10px;max-width:calc(100% - 20px);background:#fff;color:#222;font-size:10.5px;font-weight:700;padding:6px 11px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,.18);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ev-card .ev-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;color:var(--ink);margin-top:9px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ev-card .ev-meta{font-size:12px;color:#717171;margin-top:3px;}
+  .ev-thumb.c0{background:linear-gradient(145deg,#1a1a1a,#3a3a3a);}
+  .ev-thumb.c1{background:linear-gradient(145deg,#8a5b12,#F2A94E);}
+  .ev-thumb.c2{background:linear-gradient(145deg,#2e5339,#5a8f6b);}
+  .ev-thumb.c3{background:linear-gradient(145deg,#4a3a7a,#8a73c9);}
 </style>
 <style>html.sg-locked body{visibility:hidden}</style>
 <script>document.documentElement.classList.add("sg-locked")</script>
@@ -93,6 +111,13 @@
       <div class="section-title">Love to learn</div>
       <div class="tags-frame" id="loveTags"></div>
     </div>
+
+    <div class="section" id="eventsSection">
+      <div class="ev-sub" id="evSavedWrap"><div class="section-title">Saved events</div><div class="ev-row" id="evSavedRow"></div></div>
+      <div class="ev-sub" id="evHostedWrap"><div class="section-title">Events hosted</div><div class="ev-row" id="evHostedRow"></div></div>
+      <div class="ev-sub" id="evUpcomingWrap"><div class="section-title">Upcoming events</div><div class="ev-row" id="evUpcomingRow"></div></div>
+      <div class="ev-sub" id="evAttendedWrap"><div class="section-title">Attended events</div><div class="ev-row" id="evAttendedRow"></div></div>
+    </div>
   </div>
 
   <div id="privateNote" class="private-note" style="display:none;"></div>
@@ -143,6 +168,24 @@ function showPrivate(msg){
   $('content').style.display = 'none';
   $('privateNote').style.display = 'block';
   $('privateNote').textContent = msg;
+}
+
+// One row of square, left-to-right-scrolling event cards. Hides its own "Saved events" /
+// "Events hosted" / etc. block when that kind has nothing — same hide-if-empty rule as every
+// other section on this page. Returns whether it drew anything.
+const evbPrice = (p) => (p === undefined || p === null || p === '') ? '' : (String(p) === '0' ? 'Free' : '$' + p);
+function renderEventRow(wrapId, rowId, list, colorClass){
+  const wrap = $(wrapId), row = $(rowId);
+  list = Array.isArray(list) ? list.filter(e => e && e.title) : [];
+  if(!list.length){ wrap.style.display = 'none'; return false; }
+  wrap.style.display = '';
+  row.innerHTML = list.map(e => `
+    <div class="ev-card">
+      <div class="ev-thumb ${colorClass}">${e.category ? `<span class="ev-badge">${esc(e.category)}</span>` : ''}</div>
+      <div class="ev-title">${esc(e.title)}</div>
+      <div class="ev-meta">${esc([evbPrice(e.price), e.dateDisplay].filter(Boolean).join(' · '))}</div>
+    </div>`).join('');
+  return true;
 }
 
 function render(name, data){
@@ -198,6 +241,18 @@ function render(name, data){
     $('loveSection').classList.add('show');
   }
 
+  // Saved / hosted / upcoming / attended — only if the person left reservations visible to others.
+  // (Default is ON when they've never touched the setting, same as the other privacy switches.)
+  if(privacy.showReservations !== false){
+    const hasEvents = [
+      renderEventRow('evSavedWrap', 'evSavedRow', data && data.savedEvents, 'c1'),
+      renderEventRow('evHostedWrap', 'evHostedRow', data && data.hostedEvents, 'c0'),
+      renderEventRow('evUpcomingWrap', 'evUpcomingRow', data && data.upcomingEvents, 'c2'),
+      renderEventRow('evAttendedWrap', 'evAttendedRow', data && data.attendedEvents, 'c3'),
+    ].some(Boolean);
+    if(hasEvents) $('eventsSection').classList.add('show');
+  }
+
   $('loading').style.display = 'none';
   $('content').style.display = 'block';
 }
@@ -205,6 +260,13 @@ function render(name, data){
 (async function init(){
   const id = params.get('id');
   const fallbackName = (params.get('host') || params.get('name') || '').trim();
+  const demoRaw = params.get('demo');   // sample host data embedded in the link (see admin_review.html) — no account needed
+
+  if(demoRaw){
+    try{ const d = JSON.parse(demoRaw); render(d.name || fallbackName || 'Member', d); }
+    catch(e){ showPrivate('Could not read this sample profile.'); }
+    return;
+  }
 
   // No id (e.g. an older host link that only passes a name): show what we can.
   if(!id){
