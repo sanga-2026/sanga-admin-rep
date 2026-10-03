@@ -292,6 +292,45 @@ const HOSTS = [
   { id:'',  name:'Emily Ward',      country:'United States',        state:'Colorado',    city:'Boulder',       zip:'80302',  category:'Hiking',           eventsHosted:13, rating:4.7, joinedDisplay:'Dec 2024', status:'active' },
 ];
 
+/* ---- sample host PROFILES, so clicking a host in this tab shows a real-looking profile page
+   (bio, interests, "love to learn", stats) instead of just a name. None of these hosts has a real
+   account yet (id is ''), so there's nothing for host_profile_view.html / user_profile_view.html to
+   look up — the whole profile is built here and passed in the link as ?demo=<json>, the same way
+   sample events pass their details in eventDetailUrl(). Once hosts have real accounts, pass a real
+   id instead and drop the demo param; the profile pages already prefer id over demo. */
+const DEMO_PRACTICE_SETS = [
+  ['journaling', 'gratitude'], ['naturewalks', 'forest'], ['breathwork', 'vinyasa'],
+  ['mindfuleating', 'plantbased'], ['soundhealing', 'restorative'], ['taichi', 'coldplunge'],
+];
+function hostDemoProfile(h, idx){
+  const place = [h.city, h.country].filter(Boolean).join(', ');
+  return {
+    name: h.name,
+    bio: `${h.name} has been hosting ${h.category} experiences${place ? ' in ' + place : ''} since ${h.joinedDisplay}. ` +
+         (h.rating >= 4.8 ? 'Known for warm, well-run gatherings.' : 'Loves bringing people together for shared experiences.'),
+    intentionLabel: "Today's intention",
+    intentionText: 'Create a space where everyone feels welcome.',
+    interests: [h.category, 'Community building'].filter(Boolean),
+    practices: DEMO_PRACTICE_SETS[idx % DEMO_PRACTICE_SETS.length],
+    location: { city: h.city, state: h.state, country: h.country },
+    privacy: { showProfile: true, showCity: true, allowMessages: true, showReservations: true },
+    hidden: { profile: false, city: false },
+    statJoined: Math.max(1, Math.round(h.eventsHosted * 2.2)),
+    statCities: h.city ? 1 : 0,
+    statHosted: h.eventsHosted,
+  };
+}
+// Same routing SanghaAdmin.profileUrl uses (main admin -> full profile, normal admin -> privacy-filtered
+// view), plus the demo profile data so the page has something to show.
+function hostProfileLink(h, idx){
+  const main = !!(SanghaAdmin.admin && SanghaAdmin.admin.role === 'main');
+  const q = new URLSearchParams();
+  if(h.id) q.set('id', h.id);
+  q.set('name', h.name);
+  q.set('demo', JSON.stringify(hostDemoProfile(h, idx)));
+  return (main ? '/host_profile_view.html' : '/user_profile_view.html') + '?' + q.toString();
+}
+
 /* ---- link to the event details page ----
    Opens event_detail_view.html read-only (readonly=1 hides the message-host and share
    buttons, which a reviewer shouldn't use; review=1 hides the guest's "You're going —
@@ -651,7 +690,7 @@ function renderHosts(){
   if(!shown.length){ list.innerHTML = `<div class="empty">${HOST_EMPTY[htab][1]}</div>`; return; }
   list.innerHTML = shown.map(h => {
     const place = [h.city, h.state, h.country].filter(Boolean).join(', ');
-    const url = esc(SanghaAdmin.profileUrl({ id: h.id, name: h.name }));
+    const url = esc(hostProfileLink(h, HOSTS.indexOf(h)));
     return `
     <div class="host-card">
       <div class="host-ava">${initials(h.name)}</div>

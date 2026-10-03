@@ -156,9 +156,15 @@ function render(name, data){
 (async function init(){
   const id = params.get('id');
   const fallbackName = (params.get('host') || params.get('name') || '').trim();
+  const demoRaw = params.get('demo');   // sample host data embedded in the link (see admin_review.html) — no account needed
   if(!(await SanghaAdmin.ready)) return;                       // signed in AND an admin
   if(SanghaAdmin.admin.role !== 'main'){                      // only main admins get the full profile
     window.location.replace('/user_profile_view.html' + window.location.search);
+    return;
+  }
+  if(demoRaw){
+    try{ const d = JSON.parse(demoRaw); render(d.name || fallbackName || 'Member', d); }
+    catch(e){ showNote('Could not read this sample profile.'); }
     return;
   }
   if(!id){ if(fallbackName) render(fallbackName, {}); else showNote('No profile to show.'); return; }

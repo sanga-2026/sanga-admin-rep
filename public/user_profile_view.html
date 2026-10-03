@@ -205,6 +205,13 @@ function render(name, data){
 (async function init(){
   const id = params.get('id');
   const fallbackName = (params.get('host') || params.get('name') || '').trim();
+  const demoRaw = params.get('demo');   // sample host data embedded in the link (see admin_review.html) — no account needed
+
+  if(demoRaw){
+    try{ const d = JSON.parse(demoRaw); render(d.name || fallbackName || 'Member', d); }
+    catch(e){ showPrivate('Could not read this sample profile.'); }
+    return;
+  }
 
   // No id (e.g. an older host link that only passes a name): show what we can.
   if(!id){
