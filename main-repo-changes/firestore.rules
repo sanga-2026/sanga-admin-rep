@@ -46,5 +46,40 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == adminId || isMainAdmin());
       allow create, update, delete: if isMainAdmin();
     }
+
+    // Published events (/events/create_event.html). Public read, same as today's prototype — anyone
+    // can browse, including a signed-out visitor (event_detail_view.html explicitly supports that).
+    // Only the host can create their own event, and only as themselves (hostId must be their own
+    // uid) — one account can never publish as another. A host can change anything on their own
+    // event; anyone signed in may touch ONLY the "booked" field, so a guest's booking can bump the
+    // count without being able to edit the listing itself. There's no Cloud Function guarding the
+    // exact increment amount — same trust level the rest of this prototype runs at (no payment
+    // processing is server-verified either) — tighten this with a Cloud Function before this
+    // becomes a real booking count anyone relies on.
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.hostId == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.hostId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['booked'])
+      );
+      allow delete: if signedIn() && resource.data.hostId == request.auth.uid;
+    }
+
+    // One registration = one guest's completed booking form for one event (sanga_booking.html /
+    // group_event_booking_invite.html). Booking is allowed without being signed in (a guest
+    // checkout), so creation is open — the same trust level local-storage bookings had before this
+    // migration (no server-verified payment either way). A registration can be read by whoever made
+    // it (if they were signed in) or by the host of the event it's for; nothing can be edited or
+    // deleted once made (cancellations are a later feature).
+    match /registrations/{registrationId} {
+      allow create: if request.resource.data.eventId is string && request.resource.data.eventId.size() > 0;
+      allow read: if signedIn() && (
+        (resource.data.standard is map && ('userId' in resource.data.standard)
+          && resource.data.standard.userId == request.auth.uid) ||
+        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid
+      );
+      allow update, delete: if false;
+    }
   }
 }

@@ -316,6 +316,12 @@ function p(key){
   return (v !== null && v !== '') ? v : DEFAULTS[key];
 }
 
+// Events (and registrations, further down) come from Firestore now (sanga-data.js) — wait for
+// the events listener's first snapshot before reading anything live, same as every other page
+// that reads a live event at top-level script time. Everything below that used to run
+// immediately now runs once this resolves; nothing outside this file references any of it.
+(window.SanghaData ? SanghaData.eventsReady : Promise.resolve()).then(async () => {
+
 // If this id belongs to an event actually published in /events/create_event.html,
 // pull its real details in instead of the hardcoded demo defaults.
 (function applyLiveEventDefaults(){
@@ -664,7 +670,8 @@ const bookNote = document.getElementById('bookNote');
   // Already booked on this account? Then show the confirmed banner instead of Book.
   try{
     if(!isRegistered && session && appMode && data.id){
-      if(SanghaData.getRegistrationsByUser(session.id).some(r => String(r.eventId) === String(data.id))){
+      const myRegs = await SanghaData.getRegistrationsByUser(session.id);
+      if(myRegs.some(r => String(r.eventId) === String(data.id))){
         isRegistered = true;
         renderStatusBanner();
       }
@@ -804,6 +811,8 @@ if(isReviewer){
   const aHint = link(); aHint.style.cssText = 'color:inherit;text-decoration:underline;'; aHint.textContent = 'View host profile \u2192';
   hint.appendChild(aHint); nameEl.parentNode.appendChild(hint);
 })();
+
+});
 </script>
 <script src="/js/sanga-nav.js"></script>
 </body>
