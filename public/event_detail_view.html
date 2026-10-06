@@ -730,16 +730,14 @@ if(isReadonly && !isReviewer){
    The "You're going — booking confirmed" banner is for a guest who has booked; a reviewer
    hasn't booked anything, so it's removed. "Add to calendar" is removed too — a reviewer
    isn't attending — and replaced with Approve / Flag for rejection, alongside the existing
-   Message host button. A decision made here is written to the SAME localStorage key the
-   review queue itself uses (sanga_admin_decisions_v1), so it shows up there the moment the
-   reviewer switches back to that tab (it listens for storage changes from other tabs).
+   Message host button. A decision made here writes directly to the event's Firestore document
+   (status: 'published' or 'flagged'), the same field the review queue itself reads and writes —
+   so it shows up there immediately, on any admin's screen, without any local storage involved.
+   'Flag for rejection' is not a final decision: it just marks the event pending_review -> flagged
+   so another admin can make the final approve/reject call from the review queue's Flagged tab.
    Without ?review=1 none of this runs — nothing changes for a guest or a shared link. */
 if(isReviewer){
   document.getElementById('statusBanner')?.remove();
-
-  const DEC_KEY = 'sanga_admin_decisions_v1';
-  const getDecisions = () => { try{ return JSON.parse(localStorage.getItem(DEC_KEY)) || {}; }catch(e){ return {}; } };
-  const setDecisions = (v) => { try{ localStorage.setItem(DEC_KEY, JSON.stringify(v)); }catch(e){} };
 
   const actionsRow = document.getElementById('actionsRow');
   if(actionsRow){
@@ -762,21 +760,33 @@ if(isReviewer){
     noteEl.style.cssText = 'font-size:12px;opacity:.7;margin:-2px 0 10px;';
     actionsRow.insertAdjacentElement('afterend', noteEl);
 
+    let currentStatus = params.get('reviewStatus') || '';
+
     function paintDecision(){
-      const d = getDecisions()[data.id];
-      approveBtn.classList.toggle('is-active', !!d && d.status === 'approved');
-      flagBtn.classList.toggle('is-active', !!d && d.status === 'flagged');
-      noteEl.textContent = !d ? ''
-        : d.status === 'approved' ? '✓ You approved this event.'
-        : d.status === 'flagged' ? '🚩 Flagged for rejection — a main admin will finish the decision.'
+      approveBtn.classList.toggle('is-active', currentStatus === 'published');
+      flagBtn.classList.toggle('is-active', currentStatus === 'flagged');
+      noteEl.textContent = currentStatus === 'published' ? '✓ You approved this event.'
+        : currentStatus === 'flagged' ? '🚩 Flagged for rejection — a main admin will finish the decision.'
         : '';
     }
-    approveBtn.addEventListener('click', () => {
-      const d = getDecisions(); d[data.id] = { status: 'approved' }; setDecisions(d); paintDecision();
-    });
-    flagBtn.addEventListener('click', () => {
-      const d = getDecisions(); d[data.id] = { status: 'flagged' }; setDecisions(d); paintDecision();
-    });
+
+    async function decide(status){
+      if(!data.id || !window.sanghaDb){ return; }
+      approveBtn.disabled = true; flagBtn.disabled = true;
+      try{
+        const patch = { status: status, reviewedBy: (window.sanghaAuthSDK && sanghaAuthSDK.currentUser) ? sanghaAuthSDK.currentUser.uid : null,
+                         reviewedAt: firebase.firestore.FieldValue.serverTimestamp() };
+        await sanghaDb.collection('events').doc(data.id).update(patch);
+        currentStatus = status;
+        paintDecision();
+      }catch(e){
+        alert("Couldn't save that decision: " + (e.message || e));
+      }finally{
+        approveBtn.disabled = false; flagBtn.disabled = false;
+      }
+    }
+    approveBtn.addEventListener('click', () => decide('published'));
+    flagBtn.addEventListener('click', () => decide('flagged'));
     paintDecision();
   }
 }

@@ -61,7 +61,11 @@ service cloud.firestore {
     // SanghaData.createEvent) and is invisible to the public until an admin approves it.
     // The host creates, edits or deletes their own event (and can't touch the booked count — only
     // the booking Cloud Function does). Separately, an admin may change ONLY the status field, and
-    // only to 'published' or 'rejected' — the Sanga admin site's review queue, not the host side.
+    // only to 'published', 'rejected', 'flagged' or back to 'pending_review' — the Sanga admin
+    // site's review queue (and a reviewer's Approve/Flag buttons on the event details page), not
+    // the host side. 'flagged' is not a final decision: it just marks an event for another admin
+    // to make the final approve/reject call; it is treated the same as 'pending_review' everywhere
+    // outside the review queue (not public, not final).
     match /events/{eventId} {
       allow read: if resource.data.status in ['published', 'completed']
                   || (signedIn() && (resource.data.hostId == uid() || isAdmin()));
@@ -73,7 +77,7 @@ service cloud.firestore {
           && request.resource.data.booked == resource.data.booked)
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewNote', 'reviewedBy', 'reviewedAt'])
-          && request.resource.data.status in ['published', 'rejected'])
+          && request.resource.data.status in ['published', 'rejected', 'flagged', 'pending_review'])
       );
       allow delete: if signedIn() && resource.data.hostId == uid();
     }
