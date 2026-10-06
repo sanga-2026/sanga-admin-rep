@@ -771,10 +771,10 @@ if(isReviewer){
     }
 
     async function decide(status){
-      if(!data.id || !window.sanghaDb){ return; }
+      if(!data.id){ return; }
       approveBtn.disabled = true; flagBtn.disabled = true;
       try{
-        const patch = { status: status, reviewedBy: (window.sanghaAuthSDK && sanghaAuthSDK.currentUser) ? sanghaAuthSDK.currentUser.uid : null,
+        const patch = { status: status, reviewedBy: sanghaAuthSDK.currentUser ? sanghaAuthSDK.currentUser.uid : null,
                          reviewedAt: firebase.firestore.FieldValue.serverTimestamp() };
         await sanghaDb.collection('events').doc(data.id).update(patch);
         currentStatus = status;
