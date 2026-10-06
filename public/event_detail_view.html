@@ -765,9 +765,7 @@ if(isReviewer){
     function paintDecision(){
       approveBtn.classList.toggle('is-active', currentStatus === 'published');
       flagBtn.classList.toggle('is-active', currentStatus === 'flagged');
-      noteEl.textContent = currentStatus === 'published' ? '✓ You approved this event.'
-        : currentStatus === 'flagged' ? '🚩 Flagged for rejection — a main admin will finish the decision.'
-        : '';
+      noteEl.textContent = currentStatus === 'published' ? '✓ You approved this event.' : '';
     }
 
     async function decide(status){
