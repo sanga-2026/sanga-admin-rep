@@ -46,5 +46,68 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == adminId || isMainAdmin());
       allow create, update, delete: if isMainAdmin();
     }
+
+    // ------------------------------------------------------------------------------------------
+    // Events, bookings, consent forms and host settings (see docs/database_shape.md).
+    // ------------------------------------------------------------------------------------------
+    function uid() { return request.auth.uid; }
+    function eventHost(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data.hostId;
+    }
+
+    // An event. Published and finished events can be read by anyone (guests are not always logged
+    // in); a host can also read their own in any status; an admin can read any event, in any
+    // status, to run the review queue. A new event starts 'pending_review' (see
+    // SanghaData.createEvent) and is invisible to the public until an admin approves it.
+    // The host creates, edits or deletes their own event (and can't touch the booked count — only
+    // the booking Cloud Function does). Separately, an admin may change ONLY the status field, and
+    // only to 'published' or 'rejected' — the Sanga admin site's review queue, not the host side.
+    match /events/{eventId} {
+      allow read: if resource.data.status in ['published', 'completed']
+                  || (signedIn() && (resource.data.hostId == uid() || isAdmin()));
+      allow create: if signedIn() && request.resource.data.hostId == uid()
+                    && request.resource.data.booked == 0;
+      allow update: if signedIn() && (
+        (resource.data.hostId == uid()
+          && request.resource.data.hostId == resource.data.hostId
+          && request.resource.data.booked == resource.data.booked)
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewNote', 'reviewedBy', 'reviewedAt'])
+          && request.resource.data.status in ['published', 'rejected'])
+      );
+      allow delete: if signedIn() && resource.data.hostId == uid();
+    }
+
+    // A booking. The guest reads their own; the host reads all bookings of their own events.
+    // Written ONLY by the booking Cloud Function (it checks the spots left), never by a browser.
+    match /registrations/{registrationId} {
+      allow read: if signedIn() && (resource.data.userId == uid() || resource.data.hostId == uid());
+      allow write: if false;
+    }
+
+    // The consent form of an event. Any logged-in person can read it (to sign); only that event's host
+    // writes it. Signed answers: a guest adds their own, only the host reads them. No edits or deletes.
+    match /consentForms/{eventId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.resource.data.hostId == uid()
+                            && eventHost(eventId) == uid();
+      allow delete: if false;
+
+      match /submissions/{submissionId} {
+        allow create: if signedIn() && request.resource.data.userId == uid();
+        allow read: if signedIn() && eventHost(eventId) == uid();
+        allow update, delete: if false;
+      }
+    }
+
+    // A host's saved defaults (cancellation policy, payment method, usual questions). Own record only.
+    match /hostSettings/{hostId} {
+      allow read, write: if signedIn() && uid() == hostId;
+    }
+
+    // A host's unfinished ("Incomplete") events. Private to them.
+    match /users/{userId}/drafts/{draftId} {
+      allow read, write: if signedIn() && uid() == userId;
+    }
   }
 }
