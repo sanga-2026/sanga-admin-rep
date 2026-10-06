@@ -144,6 +144,7 @@
     <div class="tabs">
       <button class="tab on" data-tab="pending" type="button">Pending <span id="cntPending"></span></button>
       <button class="tab" data-tab="approved" type="button">Approved <span id="cntApproved"></span></button>
+      <button class="tab" data-tab="flagged" type="button" title="A reviewer flagged this from the event details page; needs a final decision">Flagged <span id="cntFlagged"></span></button>
       <button class="tab" data-tab="rejected" type="button">Rejected <span id="cntRejected"></span></button>
       <button class="tab" data-tab="viewed" type="button" title="Opened, but not approved or rejected yet">Viewed <span id="cntViewed"></span></button>
     </div>
@@ -378,6 +379,7 @@ function eventDetailUrl(e){
   q.set('desc', e.desc || '');
   q.set('dateDisplay', eventDateDisplay(e));
   q.set('timeDisplay', eventTimeDisplay(e));
+  q.set('reviewStatus', e.status || '');
   q.set('duration', e.duration || '');
   q.set('price', e.isFree ? '0' : String(e.price || '0'));
   q.set('groupSize', eventGroupSize(e));
@@ -473,23 +475,25 @@ let viewedAll = jget(VIEWED_KEY, {});
 const myViewed = () => viewedAll[me.userId] || {};
 const seenTag = '<span class="seen-tag">✓ Viewed</span>';
 
-// which events fall in each tab (after scope + filters). Firestore only ever has these three real
-// statuses for an event (see firestore.rules): pending_review (just published, not public yet),
-// published (approved, publicly visible) and rejected.
+// which events fall in each tab (after scope + filters). Firestore has four real statuses for an
+// event an admin can see here (see firestore.rules): pending_review (just published, not public
+// yet), flagged (a reviewer — here or from the event details page — marked it for a final
+// approve/reject call, not public), published (approved, publicly visible) and rejected.
 function groups(){
   const visible = baseEvents().filter(passes);
   const seen = myViewed();
   return {
     pending:  visible.filter(e => e.status === 'pending_review'),
     approved: visible.filter(e => e.status === 'published'),
+    flagged:  visible.filter(e => e.status === 'flagged'),
     rejected: visible.filter(e => e.status === 'rejected'),
-    // Viewed = opened but still pending — once decided either way it moves to Approved/Rejected.
-    viewed:   visible.filter(e => seen[e.id] && e.status === 'pending_review').sort((a, b) => seen[b.id] - seen[a.id]),   // most recently opened first
+    // Viewed = opened but still undecided (pending or flagged) — once approved/rejected it moves on.
+    viewed:   visible.filter(e => seen[e.id] && (e.status === 'pending_review' || e.status === 'flagged')).sort((a, b) => seen[b.id] - seen[a.id]),   // most recently opened first
   };
 }
 function refreshCounts(){
   const g = groups();
-  ['Pending','Approved','Rejected','Viewed'].forEach(n => { document.getElementById('cnt' + n).textContent = `(${g[n.toLowerCase()].length})`; });
+  ['Pending','Approved','Flagged','Rejected','Viewed'].forEach(n => { document.getElementById('cnt' + n).textContent = `(${g[n.toLowerCase()].length})`; });
   document.getElementById('mainCntEvents').textContent = `(${g.pending.length})`;
 }
 // Called when an event's details are opened. Updates in place (no re-draw), so the
@@ -506,13 +510,15 @@ function markViewed(id){
 const EMPTY = {
   pending:  ['Nothing waiting for review right now. 🎉', 'No pending events match these filters.'],
   approved: ['No approved events yet.', 'No approved events match these filters.'],
+  flagged:  ['Nothing flagged for rejection right now.', 'No flagged events match these filters.'],
   rejected: ['No rejected events yet.', 'No rejected events match these filters.'],
   viewed:   ["Nothing here. Events you open but haven't decided on yet show up in this tab.", 'No viewed events match these filters.'],
 };
 
 // Writes straight to Firestore (firestore.rules lets any admin change ONLY an event's status, to
-// 'published' or 'rejected' — nothing else about the event). The onSnapshot listener above
-// re-renders every open tab, on every device, the moment this commits — no extra bookkeeping here.
+// 'published', 'rejected', 'flagged' or back to 'pending_review' — nothing else about the event).
+// The onSnapshot listener above re-renders every open tab, on every device, the moment this
+// commits — no extra bookkeeping here.
 async function decide(id, status, reason){
   const btn = document.querySelector(`.ev[data-id="${id}"]`);
   if(btn) btn.querySelectorAll('button').forEach(b => b.disabled = true);
@@ -541,8 +547,8 @@ function render(){
   }
   const seen = myViewed();
   list.innerHTML = shown.map(e => {
-    const pillClass = e.status === 'published' ? 'ok' : e.status === 'rejected' ? 'no' : 'mid';
-    const pillText = e.status === 'published' ? 'Approved' : e.status === 'rejected' ? 'Rejected' : 'Pending';
+    const pillClass = e.status === 'published' ? 'ok' : e.status === 'flagged' ? 'warn' : e.status === 'rejected' ? 'no' : 'mid';
+    const pillText = e.status === 'published' ? 'Approved' : e.status === 'flagged' ? 'Flagged' : e.status === 'rejected' ? 'Rejected' : 'Pending';
     return `
     <div class="ev" data-id="${esc(e.id)}">
       <div class="ev-head">
@@ -557,6 +563,7 @@ function render(){
       <a class="view-link" href="${esc(eventDetailUrl(e))}" target="_blank" rel="noopener">View full details →</a>
       ${e.status === 'rejected' ? `<div class="note">${e.reviewNote ? 'Reason given: “' + esc(e.reviewNote) + '”' : 'No reason was given.'}</div>` : ''}
       ${e.status === 'published' ? `<div class="note">This event is live on Sangha home.</div>` : ''}
+      ${e.status === 'flagged' ? `<div class="note">🚩 Flagged for rejection — needs a final decision.<button class="undo" data-clearflag="${esc(e.id)}" type="button">Clear flag</button></div>` : ''}
       <div class="acts">
         <button class="approve" data-approve="${esc(e.id)}" type="button"${e.status === 'published' ? ' disabled' : ''}>Approve</button>
         <button class="reject" data-reject="${esc(e.id)}" type="button">Reject</button>
@@ -583,6 +590,7 @@ function render(){
     const id = b.dataset.confirm;
     decide(id, 'rejected', document.getElementById('reasonIn-' + id).value.trim());
   });
+  list.querySelectorAll('[data-clearflag]').forEach(b => b.onclick = () => decide(b.dataset.clearflag, 'pending_review'));
 }
 
 /* ===================== MESSAGES ===================== */
