@@ -137,17 +137,13 @@
       <div class="filters-title"><span>Filter</span><button id="clearBtn" type="button">Clear filters</button></div>
       <div class="grid">
         <div><label for="fCategory">Category</label><select id="fCategory"></select></div>
-        <div><label for="fCountry">Country</label><select id="fCountry"></select></div>
-        <div><label for="fState">State / region</label><select id="fState"></select></div>
         <div><label for="fCity">City</label><select id="fCity"></select></div>
-        <div><label for="fZip">Zip / postal code</label><input id="fZip" type="text" placeholder="e.g. 787"></div>
       </div>
     </div>
 
     <div class="tabs">
       <button class="tab on" data-tab="pending" type="button">Pending <span id="cntPending"></span></button>
       <button class="tab" data-tab="approved" type="button">Approved <span id="cntApproved"></span></button>
-      <button class="tab" data-tab="flagged" type="button" title="A reviewer flagged this from the event details page; needs a final decision">Flagged for rejection <span id="cntFlagged"></span></button>
       <button class="tab" data-tab="rejected" type="button">Rejected <span id="cntRejected"></span></button>
       <button class="tab" data-tab="viewed" type="button" title="Opened, but not approved or rejected yet">Viewed <span id="cntViewed"></span></button>
     </div>
@@ -233,7 +229,6 @@
 <script src="/js/sanga-auth.js"></script>
 <script src="/js/admin-session.js"></script>
 <script>
-const DEC_KEY      = 'sanga_admin_decisions_v1';
 const VIEWED_KEY   = 'sanga_admin_viewed_v1';   // { [adminId]: { [eventId]: time first/last opened } }
 const MSG_KEY       = 'sanga_admin_messages_v1'; // { [messageId]: { status: 'open'|'resolved', reply: '…' } }
 
@@ -245,9 +240,9 @@ const emptyScope = () => ({ countries:[], states:[], cities:[], zips:[], categor
 const normScope = (s) => Object.assign(emptyScope(), s || {});
 const initials = n => String(n || '').split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
 
-// Sample events. Location is split into country / state / city / zip so it can be filtered;
-// the rest (date, price, includes…) is what the event details page displays.
-const EVENTS = [
+// Sample events — used ONLY to build the Host tab's demo profiles (see hostDemoProfile below).
+// The Events review tab itself reads real events from Firestore now (see loadLiveEvents).
+const SAMPLE_HOST_EVENTS = [
   { id:'e1',  title:'Sunrise Yoga by the Ganges',    country:'India',                state:'Uttarakhand', city:'Rishikesh',     zip:'249201',   category:'Junior Yoga',      audience:'Everyone', host:'Meera Iyer',      dateDisplay:'Sat, Nov 14, 2026', timeDisplay:'6:30 AM – 8:30 AM',  duration:'2 hours',   price:'25', groupSize:'Up to 15 guests',    includes:['Yoga mat','Herbal tea','Guided meditation'],          cancellation:'Full refund up to 48 hours before the event.', description:'A gentle two-hour morning practice on the riverbank, open to all levels. Mats provided, followed by herbal tea and a short guided meditation.' },
   { id:'e2',  title:'Plant-Based Brunch Circle',     country:'United States',        state:'Texas',       city:'Austin',        zip:'78701',    category:'Sattvic Cooking',  audience:'Group',    host:'Jordan Lee',      dateDisplay:'Sun, Nov 15, 2026', timeDisplay:'10:30 AM – 1:00 PM', duration:'2.5 hours', price:'35', groupSize:'Up to 12 guests',    includes:['All ingredients','Recipe cards','Brunch for everyone'],cancellation:'Full refund up to 72 hours before the event.', description:'Cook and share a full vegan brunch together. Small group, all ingredients included, recipes sent afterwards.' },
   { id:'e3',  title:'Forest Bathing Walk',           country:'United States',        state:'Colorado',    city:'Denver',        zip:'80202',    category:'Nature Explorers', audience:'Everyone', host:'Sam Ortiz',       dateDisplay:'Sat, Nov 21, 2026', timeDisplay:'9:00 AM – 11:00 AM', duration:'2 hours',   price:'20', groupSize:'Up to 10 guests',    includes:['Guided prompts','Trail map'],                         cancellation:'Full refund up to 24 hours before the event.', description:'A slow, silent two-hour walk with guided sensory prompts. Wear comfortable shoes; light rain is fine.' },
@@ -305,11 +300,11 @@ const DEMO_PRACTICE_SETS = [
   ['mindfuleating', 'plantbased'], ['soundhealing', 'restorative'], ['taichi', 'coldplunge'],
 ];
 // Square-card event lists (saved / hosted / upcoming / attended) are built from the same sample
-// EVENTS array the review queue uses, so they look like real listings rather than placeholder text.
+// SAMPLE_HOST_EVENTS array, so they look like real listings rather than placeholder text.
 const eventBox = (e) => ({ title: e.title, dateDisplay: e.dateDisplay, category: e.category, price: e.price });
 function pickEvents(start, count){
   const out = [];
-  for(let i = 0; i < count; i++) out.push(EVENTS[(start + i) % EVENTS.length]);
+  for(let i = 0; i < count; i++) out.push(SAMPLE_HOST_EVENTS[(start + i) % SAMPLE_HOST_EVENTS.length]);
   return out.map(eventBox);
 }
 function hostDemoProfile(h, idx){
@@ -329,7 +324,7 @@ function hostDemoProfile(h, idx){
     statCities: h.city ? 1 : 0,
     statHosted: h.eventsHosted,
     savedEvents: pickEvents(idx * 2 + 1, 3),
-    hostedEvents: EVENTS.filter(e => e.host === h.name).map(eventBox),
+    hostedEvents: SAMPLE_HOST_EVENTS.filter(e => e.host === h.name).map(eventBox),
     upcomingEvents: pickEvents(idx * 2 + 5, 2),
     attendedEvents: pickEvents(idx * 3 + 2, 4),
   };
@@ -348,35 +343,46 @@ function hostProfileLink(h, idx){
 /* ---- link to the event details page ----
    Opens event_detail_view.html read-only (readonly=1 hides the message-host and share
    buttons, which a reviewer shouldn't use; review=1 hides the guest's "You're going —
-   booking confirmed" banner, which doesn't apply to a reviewer).
-   These are SAMPLE events, which Sangha's own data doesn't know about, so their details
-   are passed in the link. Once this page is fed real Sangha events, set
-   USE_SAMPLE_DETAILS = false: the link becomes just  ?id=<eventId>&readonly=1  and the
-   details page loads the real event itself. (Leave it true with real events and the
-   copied-in values would override the real ones.) */
+   booking confirmed" banner, which doesn't apply to a reviewer, and swaps in the Approve/
+   Flag/Message host reviewer actions).
+   This admin site doesn't load sanga-data.js (that's sanga-rep's own data layer), so
+   event_detail_view.html here can't look up the live event itself the way it does on the real
+   app — every real field it needs has to be passed in the link, same as the old sample data did. */
 const DETAIL_PAGE = 'event_detail_view.html';
-// Where clicking the host (on the details page) goes. Real events: pass ?hostId=<id>.
+// Where clicking the host (on the details page) goes. Real events carry a real hostId.
 // A host's name opens the full profile for a MAIN admin and the privacy-filtered one for a normal admin.
-function hostProfileUrl(e){ return SanghaAdmin.profileUrl({ id: e.hostId, name: e.host }); }
-const USE_SAMPLE_DETAILS = true;
+function hostProfileUrl(e){ return SanghaAdmin.profileUrl({ id: e.hostId, name: e.hostName }); }
+// Real events don't have a single "groupSize" string or "dateDisplay"/"timeDisplay" — derive them
+// from the raw fields /events/create_event.html actually saves (same logic sanga-rep's own pages use).
+function eventGroupSize(e){
+  if(e.audience === 'group') return `${e.minSize || '?'}–${e.maxSize || '?'} guests`;
+  if(e.maxCountMode === 'nolimit') return 'No limit on attendees';
+  return e.maxCount ? `Up to ${e.maxCount} guests` : '';
+}
+function eventDateDisplay(e){
+  return (e.sessions && e.sessions[0] && e.sessions[0].date) ? e.sessions[0].date : (e.date || 'Date TBD');
+}
+function eventTimeDisplay(e){
+  const tb = e.timeBlocks && e.timeBlocks[0];
+  if(!tb || (!tb.startTime && !tb.endTime)) return '';
+  return (tb.startTime || '?') + (tb.endTime ? '–' + tb.endTime : '');
+}
 function eventDetailUrl(e){
   const q = new URLSearchParams({ id: e.id, readonly: '1', review: '1' });
   q.set('hostProfile', hostProfileUrl(e));
-  if(USE_SAMPLE_DETAILS){
-    q.set('status', 'upcoming');
-    q.set('title', e.title);
-    q.set('host', e.host);
-    q.set('category', e.category);
-    q.set('city', [e.city, e.country].filter(Boolean).join(', '));
-    q.set('desc', e.description);
-    q.set('dateDisplay', e.dateDisplay);
-    q.set('timeDisplay', e.timeDisplay);
-    q.set('duration', e.duration);
-    q.set('price', e.price);
-    q.set('groupSize', e.groupSize);
-    q.set('includes', JSON.stringify(e.includes || []));
-    q.set('cancellation', e.cancellation || '');
-  }
+  q.set('status', 'upcoming');
+  q.set('title', e.title || 'Untitled event');
+  q.set('host', e.hostName || 'Host');
+  q.set('category', e.category || '');
+  q.set('city', e.city || '');
+  q.set('desc', e.desc || '');
+  q.set('dateDisplay', eventDateDisplay(e));
+  q.set('timeDisplay', eventTimeDisplay(e));
+  q.set('duration', e.duration || '');
+  q.set('price', e.isFree ? '0' : String(e.price || '0'));
+  q.set('groupSize', eventGroupSize(e));
+  q.set('includes', JSON.stringify(e.includes || []));
+  q.set('cancellation', e.cancellation || '');
   return DETAIL_PAGE + '?' + q.toString();
 }
 
@@ -398,9 +404,8 @@ function loadIdentity(){
   myScope = isMain ? null : normScope(me.scope);
 }
 loadIdentity();
-let decisions = jget(DEC_KEY, {});
 let tab = 'pending';
-const f = { category:'', country:'', state:'', city:'', zip:'' };
+const f = { category:'', city:'' };
 
 // Everything an admin's scope can narrow: countries/states/cities/zips always; categories only
 // matters for events and hosts (messages don't have one).
@@ -408,14 +413,30 @@ function inScope(item, s, opts){
   if(!s) return true;
   opts = opts || {};
   const ci = (a, v) => a.some(x => x.toLowerCase() === String(v || '').toLowerCase());
-  if(s.countries.length && !ci(s.countries, item.country)) return false;
-  if(s.states.length && !ci(s.states, item.state)) return false;
+  if(!opts.noCountryState && s.countries.length && !ci(s.countries, item.country)) return false;
+  if(!opts.noCountryState && s.states.length && !ci(s.states, item.state)) return false;
   if(s.cities.length && !ci(s.cities, item.city)) return false;
   if(!opts.noZip && s.zips.length && !s.zips.some(z => String(item.zip || '').toLowerCase().startsWith(z.toLowerCase()))) return false;
   if(!opts.noCategory && s.categories.length && !s.categories.includes(item.category)) return false;
   return true;
 }
-const baseEvents = () => EVENTS.filter(e => inScope(e, myScope));
+
+/* ---- real events, straight from Firestore ----
+   An admin's record lets them read every event, in any status (firestore.rules). Live-synced with
+   onSnapshot, so Approve/Reject from another tab, another admin, or the event details page all show
+   up here immediately — no more cross-tab localStorage/'storage'-event trick needed.
+   Real events only carry a plain city string, not country/state/zip, so an admin's scope only
+   narrows events by city and category — country/state/zip scope has no effect here (it still does
+   on the sample Host tab below). */
+let liveEvents = [];
+let eventsLoaded = false;
+sanghaDb.collection('events').onSnapshot((snap) => {
+  liveEvents = snap.docs.map((d) => Object.assign({}, d.data(), { id: d.id }));
+  eventsLoaded = true;
+  if(window.SanghaAdmin && SanghaAdmin.admin) render();   // identity already loaded: re-render on every change
+}, (err) => console.warn('Could not load events from Firestore:', err));
+
+const baseEvents = () => liveEvents.filter(e => inScope(e, myScope, { noCountryState:true, noZip:true }));
 const uniq = (arr) => Array.from(new Set(arr.filter(Boolean))).sort((a, b) => a.localeCompare(b));
 
 function fill(id, values, current, allLabel){
@@ -428,27 +449,21 @@ function fill(id, values, current, allLabel){
 function renderFilters(){
   const base = baseEvents();
   f.category = fill('fCategory', uniq(base.map(e => e.category)), f.category, 'All categories');
-  f.country  = fill('fCountry',  uniq(base.map(e => e.country)),  f.country,  'All countries');
-  const inCountry = base.filter(e => !f.country || e.country === f.country);
-  f.state    = fill('fState',    uniq(inCountry.map(e => e.state)), f.state, 'All states');
-  const inState = inCountry.filter(e => !f.state || e.state === f.state);
-  f.city     = fill('fCity',     uniq(inState.map(e => e.city)),  f.city,     'All cities');
+  f.city     = fill('fCity',     uniq(base.map(e => e.city)),     f.city,     'All cities');
 }
 
 function passes(e){
   return (!f.category || e.category === f.category)
-      && (!f.country  || e.country === f.country)
-      && (!f.state    || e.state === f.state)
-      && (!f.city     || e.city === f.city)
-      && (!f.zip      || String(e.zip || '').toLowerCase().startsWith(f.zip.toLowerCase()));
+      && (!f.city     || e.city === f.city);
 }
 
-function scopeText(withCategories){
+function scopeText(withCategories, opts){
+  opts = opts || {};
   const parts = [];
-  if(myScope.countries.length)  parts.push(`countries: <b>${esc(myScope.countries.join(', '))}</b>`);
-  if(myScope.states.length)     parts.push(`states: <b>${esc(myScope.states.join(', '))}</b>`);
+  if(!opts.noCountryState && myScope.countries.length) parts.push(`countries: <b>${esc(myScope.countries.join(', '))}</b>`);
+  if(!opts.noCountryState && myScope.states.length)    parts.push(`states: <b>${esc(myScope.states.join(', '))}</b>`);
   if(myScope.cities.length)     parts.push(`cities: <b>${esc(myScope.cities.join(', '))}</b>`);
-  if(myScope.zips.length)       parts.push(`zip codes: <b>${esc(myScope.zips.join(', '))}</b>`);
+  if(!opts.noCountryState && myScope.zips.length) parts.push(`zip codes: <b>${esc(myScope.zips.join(', '))}</b>`);
   if(withCategories !== false && myScope.categories.length) parts.push(`categories: <b>${esc(myScope.categories.join(', '))}</b>`);
   return parts.length ? 'You see ' + parts.join(' &nbsp;·&nbsp; ') : '';   // nothing narrowed yet: no box to show
 }
@@ -458,24 +473,23 @@ let viewedAll = jget(VIEWED_KEY, {});
 const myViewed = () => viewedAll[me.userId] || {};
 const seenTag = '<span class="seen-tag">✓ Viewed</span>';
 
-// which events fall in each tab (after scope + filters)
+// which events fall in each tab (after scope + filters). Firestore only ever has these three real
+// statuses for an event (see firestore.rules): pending_review (just published, not public yet),
+// published (approved, publicly visible) and rejected.
 function groups(){
   const visible = baseEvents().filter(passes);
   const seen = myViewed();
   return {
-    pending:  visible.filter(e => !decisions[e.id]),
-    approved: visible.filter(e => decisions[e.id] && decisions[e.id].status === 'approved'),
-    // Flagged from the event details page by any reviewer; waits here for a final approve/reject.
-    flagged:  visible.filter(e => decisions[e.id] && decisions[e.id].status === 'flagged'),
-    rejected: visible.filter(e => decisions[e.id] && decisions[e.id].status === 'rejected'),
-    // Viewed = opened, but not decided yet (opened − approved − rejected). Once you approve or
-    // reject an event it moves to Approved/Rejected; Undo brings it back here if it was opened.
-    viewed:   visible.filter(e => seen[e.id] && !decisions[e.id]).sort((a, b) => seen[b.id] - seen[a.id]),   // most recently opened first
+    pending:  visible.filter(e => e.status === 'pending_review'),
+    approved: visible.filter(e => e.status === 'published'),
+    rejected: visible.filter(e => e.status === 'rejected'),
+    // Viewed = opened but still pending — once decided either way it moves to Approved/Rejected.
+    viewed:   visible.filter(e => seen[e.id] && e.status === 'pending_review').sort((a, b) => seen[b.id] - seen[a.id]),   // most recently opened first
   };
 }
 function refreshCounts(){
   const g = groups();
-  ['Pending','Approved','Flagged','Rejected','Viewed'].forEach(n => { document.getElementById('cnt' + n).textContent = `(${g[n.toLowerCase()].length})`; });
+  ['Pending','Approved','Rejected','Viewed'].forEach(n => { document.getElementById('cnt' + n).textContent = `(${g[n.toLowerCase()].length})`; });
   document.getElementById('mainCntEvents').textContent = `(${g.pending.length})`;
 }
 // Called when an event's details are opened. Updates in place (no re-draw), so the
@@ -492,10 +506,25 @@ function markViewed(id){
 const EMPTY = {
   pending:  ['Nothing waiting for review right now. 🎉', 'No pending events match these filters.'],
   approved: ['No approved events yet.', 'No approved events match these filters.'],
-  flagged:  ['Nothing flagged for rejection right now.', 'No flagged events match these filters.'],
   rejected: ['No rejected events yet.', 'No rejected events match these filters.'],
-  viewed:   ["Nothing here. Events you open but haven't approved or rejected yet show up in this tab.", 'No viewed events match these filters.'],
+  viewed:   ["Nothing here. Events you open but haven't decided on yet show up in this tab.", 'No viewed events match these filters.'],
 };
+
+// Writes straight to Firestore (firestore.rules lets any admin change ONLY an event's status, to
+// 'published' or 'rejected' — nothing else about the event). The onSnapshot listener above
+// re-renders every open tab, on every device, the moment this commits — no extra bookkeeping here.
+async function decide(id, status, reason){
+  const btn = document.querySelector(`.ev[data-id="${id}"]`);
+  if(btn) btn.querySelectorAll('button').forEach(b => b.disabled = true);
+  try{
+    const patch = { status, reviewedBy: me.userId, reviewedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    if(status === 'rejected') patch.reviewNote = reason || '';
+    await sanghaDb.collection('events').doc(id).update(patch);
+  }catch(e){
+    alert("Couldn't save that decision: " + (e.message || e));
+    if(btn) btn.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
+}
 
 function render(){
   renderFilters();
@@ -503,44 +532,39 @@ function render(){
   document.querySelectorAll('#panel-events .tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
 
   const list = document.getElementById('list');
+  if(!eventsLoaded){ list.innerHTML = `<div class="empty">Loading events…</div>`; return; }
   const shown = groups()[tab];
   if(!shown.length){
-    const filtering = f.category || f.country || f.state || f.city || f.zip;
+    const filtering = f.category || f.city;
     list.innerHTML = `<div class="empty">${EMPTY[tab][filtering ? 1 : 0]}</div>`;
     return;
   }
   const seen = myViewed();
   list.innerHTML = shown.map(e => {
-    const d = decisions[e.id];
-    const place = [e.city, e.state, e.country].filter(Boolean).join(', ') + (e.zip ? ' · ' + e.zip : '');
-    const pillClass = !d ? '' : d.status === 'approved' ? 'ok' : d.status === 'flagged' ? 'warn' : 'no';
-    const pillText = !d ? esc(e.audience) : d.status === 'approved' ? 'Approved' : d.status === 'flagged' ? 'Flagged' : 'Rejected';
-    // A decided (approved/rejected) event is final, with Undo. A flagged one — set either here or
-    // from the event details page's "Flag for rejection" button — still needs Approve/Reject below;
-    // its note just explains why it's here, with "Clear flag" instead of Undo.
+    const pillClass = e.status === 'published' ? 'ok' : e.status === 'rejected' ? 'no' : 'mid';
+    const pillText = e.status === 'published' ? 'Approved' : e.status === 'rejected' ? 'Rejected' : 'Pending';
     return `
-    <div class="ev" data-id="${e.id}">
+    <div class="ev" data-id="${esc(e.id)}">
       <div class="ev-head">
         <div>
-          <div class="ev-title"><a href="${esc(eventDetailUrl(e))}" target="_blank" rel="noopener">${esc(e.title)}</a></div>
-          <div class="ev-meta">${esc(place)}<br>${esc(e.category)} · hosted by ${esc(e.host)}</div>
+          <div class="ev-title"><a href="${esc(eventDetailUrl(e))}" target="_blank" rel="noopener">${esc(e.title || 'Untitled event')}</a></div>
+          <div class="ev-meta">${esc(e.city || '')}<br>${esc(e.category || '')} · hosted by ${esc(e.hostName || 'Host')}</div>
           <div class="seen-slot">${seen[e.id] ? seenTag : ''}</div>
         </div>
         <span class="pill ${pillClass}">${pillText}</span>
       </div>
-      <div class="desc">${esc(e.description)}</div>
+      <div class="desc">${esc(e.desc || '')}</div>
       <a class="view-link" href="${esc(eventDetailUrl(e))}" target="_blank" rel="noopener">View full details →</a>
-      ${d && d.status !== 'flagged' ? `<div class="note">${d.status === 'rejected' && d.reason ? 'Reason given: “' + esc(d.reason) + '”' : (d.status === 'approved' ? 'This event would now appear publicly.' : 'No reason was given.')}<button class="undo" data-undo="${e.id}" type="button">Undo</button></div>` : ''}
-      ${d && d.status === 'flagged' ? `<div class="note">🚩 Flagged for rejection from the event details page — needs a final decision.<button class="undo" data-undo="${e.id}" type="button">Clear flag</button></div>` : ''}
-      ${!d || d.status === 'flagged' ? `
+      ${e.status === 'rejected' ? `<div class="note">${e.reviewNote ? 'Reason given: “' + esc(e.reviewNote) + '”' : 'No reason was given.'}</div>` : ''}
+      ${e.status === 'published' ? `<div class="note">This event is live on Sangha home.</div>` : ''}
       <div class="acts">
-        <button class="approve" data-approve="${e.id}" type="button">Approve</button>
-        <button class="reject" data-reject="${e.id}" type="button">Reject</button>
+        <button class="approve" data-approve="${esc(e.id)}" type="button"${e.status === 'published' ? ' disabled' : ''}>Approve</button>
+        <button class="reject" data-reject="${esc(e.id)}" type="button">Reject</button>
       </div>
-      <div class="reason" id="reason-${e.id}">
-        <input type="text" id="reasonIn-${e.id}" placeholder="Reason (optional) — shown to the host">
-        <button class="confirm" data-confirm="${e.id}" type="button">Confirm reject</button>
-      </div>` : ''}
+      <div class="reason" id="reason-${esc(e.id)}">
+        <input type="text" id="reasonIn-${esc(e.id)}" placeholder="Reason (optional) — shown to the host">
+        <button class="confirm" data-confirm="${esc(e.id)}" type="button">Confirm reject</button>
+      </div>
     </div>`;
   }).join('');
 
@@ -548,25 +572,23 @@ function render(){
   list.querySelectorAll('.ev a').forEach(a => a.addEventListener('click', () => markViewed(a.closest('.ev').dataset.id)));
   list.querySelectorAll('.ev').forEach(card => card.addEventListener('click', (ev) => {
     if(ev.target.closest('button, input, a, .reason')) return;   // those do their own thing
-    const e = EVENTS.find(x => x.id === card.dataset.id);
+    const e = liveEvents.find(x => x.id === card.dataset.id);
     if(!e) return;
     markViewed(e.id);
     window.open(eventDetailUrl(e), '_blank', 'noopener');
   }));
-  list.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => { decisions[b.dataset.approve] = { status:'approved' }; jset(DEC_KEY, decisions); render(); });
+  list.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => decide(b.dataset.approve, 'published'));
   list.querySelectorAll('[data-reject]').forEach(b => b.onclick = () => document.getElementById('reason-' + b.dataset.reject).classList.toggle('show'));
   list.querySelectorAll('[data-confirm]').forEach(b => b.onclick = () => {
     const id = b.dataset.confirm;
-    decisions[id] = { status:'rejected', reason: document.getElementById('reasonIn-' + id).value.trim() };
-    jset(DEC_KEY, decisions); render();
+    decide(id, 'rejected', document.getElementById('reasonIn-' + id).value.trim());
   });
-  list.querySelectorAll('[data-undo]').forEach(b => b.onclick = () => { delete decisions[b.dataset.undo]; jset(DEC_KEY, decisions); render(); });
 }
 
 /* ===================== MESSAGES ===================== */
 const mf = { kind:'', category:'', country:'', state:'', city:'', zip:'' };
 let mtab = 'open';
-let msgStore = jget(MSG_KEY, {});   // local reply/resolved overrides, same pattern as `decisions` above
+let msgStore = jget(MSG_KEY, {});   // local reply/resolved overrides, same pattern as before
 const msgStatus = (m) => (msgStore[m.id] && msgStore[m.id].status) || m.status;
 const msgReply  = (m) => (msgStore[m.id] && msgStore[m.id].reply) || '';
 const baseMessages = () => MESSAGES.filter(m => inScope(m, myScope, { noZip:true, noCategory:true }));
@@ -749,9 +771,9 @@ document.querySelectorAll('.main-tab').forEach(t => t.onclick = () => { mainTab 
 // Shows the scope box only when the admin's scope actually narrows something; hidden for a main
 // admin (who sees everything) and for a normal admin with no limits set yet (same thing from
 // their point of view — nothing to explain).
-function setScopeBox(elId, withCategories){
+function setScopeBox(elId, withCategories, opts){
   const el = document.getElementById(elId);
-  const txt = isMain ? '' : scopeText(withCategories);
+  const txt = isMain ? '' : scopeText(withCategories, opts);
   el.style.display = txt ? '' : 'none';
   el.innerHTML = txt;
 }
@@ -761,14 +783,13 @@ function applyIdentity(){
   renderUserChip();
   viewedAll = jget(VIEWED_KEY, {});
   msgStore = jget(MSG_KEY, {});
-  f.category = f.country = f.state = f.city = f.zip = '';
-  document.getElementById('fZip').value = '';
+  f.category = f.city = '';
   mf.kind = mf.category = mf.country = mf.state = mf.city = mf.zip = '';
   document.getElementById('mfZip').value = '';
   hf.category = hf.country = hf.state = hf.city = hf.zip = '';
   document.getElementById('hfZip').value = '';
   tab = 'pending'; mtab = 'open'; htab = 'active';
-  setScopeBox('scopeBox', true);
+  setScopeBox('scopeBox', true, { noCountryState: true });   // real events only carry city, not country/state/zip
   setScopeBox('msgScopeBox', false);
   setScopeBox('hostScopeBox', true);
   renderMainTabs();
@@ -776,11 +797,10 @@ function applyIdentity(){
   renderMessages();
   renderHosts();
 }
-['fCategory','fCountry','fState','fCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
-  f[{fCategory:'category', fCountry:'country', fState:'state', fCity:'city'}[id]] = e.target.value; render();
+['fCategory','fCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
+  f[{fCategory:'category', fCity:'city'}[id]] = e.target.value; render();
 }));
-document.getElementById('fZip').addEventListener('input', e => { f.zip = e.target.value.trim(); render(); });
-document.getElementById('clearBtn').onclick = () => { f.category = f.country = f.state = f.city = f.zip = ''; document.getElementById('fZip').value = ''; render(); };
+document.getElementById('clearBtn').onclick = () => { f.category = f.city = ''; render(); };
 document.querySelectorAll('#panel-events .tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; render(); });
 
 ['mfKind','mfCategory','mfCountry','mfState','mfCity'].forEach(id => document.getElementById(id).addEventListener('change', e => {
@@ -798,15 +818,6 @@ document.getElementById('hostClearBtn').onclick = () => { hf.category = hf.count
 document.querySelectorAll('#panel-hosts .tab').forEach(t => t.onclick = () => { htab = t.dataset.htab; renderHosts(); });
 
 SanghaAdmin.ready.then(ok => { if(ok) applyIdentity(); });
-
-// Approve / Flag for rejection on the event details page (opened in a new tab) writes to this
-// same key. 'storage' only fires in OTHER tabs, which is exactly this case: pick up the change
-// the moment this tab is back in focus, no polling needed.
-window.addEventListener('storage', (ev) => {
-  if(ev.key !== DEC_KEY) return;
-  decisions = jget(DEC_KEY, {});
-  render();
-});
 </script>
 </body>
 </html>
