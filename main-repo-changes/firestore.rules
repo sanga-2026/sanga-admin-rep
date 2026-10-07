@@ -114,6 +114,11 @@ service cloud.firestore {
       allow read, write: if signedIn() && uid() == userId;
     }
 
+    // The events a person saved with the heart. Private to them.
+    match /users/{userId}/savedEvents/{eventId} {
+      allow read, write: if signedIn() && uid() == userId;
+    }
+
     // The cover library: photos handed out by the "Suggest one" button on Create event.
     // Admins add and read them (admin site, "Cover library" page); only a MAIN admin removes one.
     // Hosts never read this directly: the nextCoverPhoto Cloud Function picks the next photo for them.
