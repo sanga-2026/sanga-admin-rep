@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// Firebase Storage rules. Deploy with:
+//     firebase deploy --only storage --project sanga-firebase-prod
+// Anything not allowed below is DENIED.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+    }
+    function isMainAdmin() {
+      return isAdmin()
+        && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.role == 'main';
+    }
+
+    // Cover library photos (admin site, "Cover library" page). Admins add and view them, only a main
+    // admin removes one. The nextCoverPhoto Cloud Function reads them with the Admin SDK.
+    match /coverLibrary/{category}/{file} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+                    && request.resource.size < 2 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow update: if false;
+      allow delete: if isMainAdmin();
+    }
+  }
+}

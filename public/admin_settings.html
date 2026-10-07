@@ -95,7 +95,10 @@
   <div id="mainContent">
     <div class="top">
       <div class="title">Admin Settings</div>
-      <a class="nav-link" href="admin_review.html">Go to Review Queue →</a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="nav-link" href="cover_library.html">Cover library</a>
+        <a class="nav-link" href="admin_review.html">Go to Review Queue →</a>
+      </div>
     </div>
     <div class="sub">Promote people to admin and choose what each admin is responsible for reviewing.</div>
 
@@ -135,7 +138,7 @@
 <script src="/js/sanga-auth.js"></script>
 <script src="/js/admin-session.js"></script>
 <script>
-const CATEGORIES = ["Sattvic Cooking","Hiking","Sky Gazing","Public Speaking","Mindful Baking","Sustainability","Storytelling","Art & Craft","Junior Yoga","Nature Explorers","Other"];
+const CATEGORIES = ["Hiking","Walk & connect","Yoga","Sustainability","Refresh & Reset","Music","Sports","Gardening","Rooted in nature"];
 
 let PEOPLE = [];   // only people relevant to this page: current admins/main admins, plus anyone who has
                     // ever asked for admin access (requested, approved or rejected) — never everyone
