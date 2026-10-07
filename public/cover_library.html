@@ -29,7 +29,8 @@
   .sec-sub{font-size:12.5px;opacity:.6;margin-bottom:14px;line-height:1.5;}
   .drop{display:block;width:100%;border:2px dashed #b9ae95;border-radius:14px;background:var(--sage);padding:22px;text-align:center;font-size:14px;font-weight:700;}
   .drop small{display:block;font-weight:400;opacity:.65;margin-top:4px;font-size:12px;}
-  .drop.over{border-color:var(--forest);background:#f7d79a;}
+  .drop:hover,.drop:focus,.drop.over{outline:none;border-color:var(--rust);background:#f7d79a;}
+  .drop.ready{border-color:var(--rust);box-shadow:0 0 0 3px rgba(242,169,78,.35);}
   .drop.off{opacity:.5;cursor:not-allowed;}
   .btn{padding:9px 16px;border-radius:8px;font-weight:700;font-size:12.5px;border:none;background:var(--rust);color:#fff;}
   .btn:hover{opacity:.9;}
@@ -68,9 +69,9 @@
   <div class="section" id="panel" style="display:none;">
     <div class="sec-title" id="panelTitle"></div>
     <div class="sec-sub" id="panelSub"></div>
-    <label class="drop" id="drop" for="fileInput">
+    <label class="drop" id="drop" for="fileInput" tabindex="0">
       Click to choose pictures, or drag them here
-      <small id="dropHint">JPG, PNG or WebP</small>
+      <small id="dropHint" data-idle="JPG, PNG or WebP. You can also press Ctrl+V to paste pictures." data-ready="Ready: press Ctrl+V to paste, or drop pictures here">JPG, PNG or WebP. You can also press Ctrl+V to paste pictures.</small>
     </label>
     <input type="file" id="fileInput" accept="image/*" multiple style="display:none;">
     <div class="bar">
@@ -271,6 +272,22 @@ $('photos').addEventListener('change', async (ev) => {
 ['dragenter','dragover'].forEach(t => $('drop').addEventListener(t, (ev) => { ev.preventDefault(); $('drop').classList.add('over'); }));
 ['dragleave','drop'].forEach(t => $('drop').addEventListener(t, (ev) => { ev.preventDefault(); $('drop').classList.remove('over'); }));
 $('drop').addEventListener('drop', (ev) => { if(ev.dataTransfer && ev.dataTransfer.files) upload(ev.dataTransfer.files); });
+
+// The box glows while it is selected (like the photo boxes on Create event); Ctrl+V pastes pictures into it.
+function setReady(on){
+  $('drop').classList.toggle('ready', on);
+  const h = $('dropHint'); h.textContent = on ? h.dataset.ready : h.dataset.idle;
+}
+$('drop').addEventListener('focus', () => setReady(true));
+$('drop').addEventListener('blur', () => setReady(false));
+$('drop').addEventListener('click', () => { setReady(true); $('drop').focus(); });
+document.addEventListener('paste', (ev) => {
+  if(!current || busy) return;
+  const files = [];
+  const items = (ev.clipboardData && ev.clipboardData.items) || [];
+  for(let i = 0; i < items.length; i++){ const f = items[i].kind === 'file' ? items[i].getAsFile() : null; if(f) files.push(f); }
+  if(files.length){ ev.preventDefault(); upload(files); }
+});
 
 SanghaAdmin.ready.then(async (ok) => {
   if(!ok) return;
