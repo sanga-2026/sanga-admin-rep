@@ -25,7 +25,7 @@
   textarea, input{font-family:inherit;}
   img{display:block;max-width:100%;}
 
-  .wrap{max-width:600px;margin:0 auto;padding:0 20px 60px;}
+  .wrap{max-width:840px;margin:0 auto;padding:0 20px 60px;}
 
   /* ---------- topbar ---------- */
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 0;}
@@ -157,6 +157,15 @@
   .sf-photo img{width:100%;height:100%;object-fit:cover;display:block;}
   .sf-files{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
   @media (max-width:420px){ .sf-files{grid-template-columns:1fr;} }
+  /* picture viewer: click a supporting picture to see it large; arrows / swipe / keys move between pictures */
+  .sf-lb{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:16px;}
+  .sf-lb[hidden]{display:none;}
+  .sf-lb img{max-width:min(94vw,1100px);max-height:78vh;object-fit:contain;border-radius:10px;background:#111;}
+  .sf-lb-cap{color:#fff;font-size:13px;margin-top:12px;text-align:center;opacity:.9;}
+  .sf-lb-btn{position:absolute;background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .sf-lb-btn:hover{background:rgba(255,255,255,.28);}
+  .sf-lb-x{top:14px;right:14px;} .sf-lb-prev{left:14px;top:50%;margin-top:-22px;} .sf-lb-next{right:14px;top:50%;margin-top:-22px;}
+  .sf-lb-btn[hidden]{display:none;}
 
 </style>
 </head>
@@ -849,5 +858,54 @@ if(isReviewer){
 })();
 </script>
 <script src="/js/sanga-nav.js"></script>
+<script>
+/* Supporting pictures open in a viewer on this page (left / right arrows, swipe, Esc to close) instead of a new tab. */
+(function(){
+  let box = null, imgEl, capEl, prevB, nextB, list = [], idx = 0, startX = null;
+  function build(){
+    box = document.createElement('div'); box.className = 'sf-lb'; box.hidden = true;
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'Picture viewer');
+    box.innerHTML = '<button type="button" class="sf-lb-btn sf-lb-x" aria-label="Close">&times;</button>'
+      + '<button type="button" class="sf-lb-btn sf-lb-prev" aria-label="Previous picture">&#8249;</button>'
+      + '<img alt=""><div class="sf-lb-cap"></div>'
+      + '<button type="button" class="sf-lb-btn sf-lb-next" aria-label="Next picture">&#8250;</button>';
+    document.body.appendChild(box);
+    imgEl = box.querySelector('img'); capEl = box.querySelector('.sf-lb-cap');
+    prevB = box.querySelector('.sf-lb-prev'); nextB = box.querySelector('.sf-lb-next');
+    box.querySelector('.sf-lb-x').addEventListener('click', close);
+    prevB.addEventListener('click', (e) => { e.stopPropagation(); show(idx - 1); });
+    nextB.addEventListener('click', (e) => { e.stopPropagation(); show(idx + 1); });
+    box.addEventListener('click', (e) => { if(e.target === box) close(); });
+    box.addEventListener('touchstart', (e) => { startX = e.changedTouches[0].clientX; }, { passive: true });
+    box.addEventListener('touchend', (e) => {
+      if(startX === null) return;
+      const dx = e.changedTouches[0].clientX - startX; startX = null;
+      if(Math.abs(dx) > 40) show(idx + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+  }
+  function show(i){
+    idx = (i + list.length) % list.length;
+    imgEl.src = list[idx].url; imgEl.alt = list[idx].name;
+    capEl.textContent = (list[idx].name ? list[idx].name + '  \u00b7  ' : '') + (idx + 1) + ' / ' + list.length;
+    prevB.hidden = nextB.hidden = list.length < 2;
+  }
+  function open(i){ if(!box) build(); box.hidden = false; document.body.style.overflow = 'hidden'; show(i); }
+  function close(){ if(!box) return; box.hidden = true; imgEl.removeAttribute('src'); document.body.style.overflow = ''; }
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('.sf-photo');
+    if(!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return;   // Ctrl/Cmd-click still opens a new tab
+    e.preventDefault();
+    const all = Array.from(document.querySelectorAll('.sf-photo'));
+    list = all.map((x) => ({ url: x.getAttribute('href'), name: x.getAttribute('title') || '' }));
+    open(all.indexOf(a));
+  });
+  document.addEventListener('keydown', (e) => {
+    if(!box || box.hidden) return;
+    if(e.key === 'Escape') close();
+    else if(e.key === 'ArrowLeft') show(idx - 1);
+    else if(e.key === 'ArrowRight') show(idx + 1);
+  });
+})();
+</script>
 </body>
 </html>
