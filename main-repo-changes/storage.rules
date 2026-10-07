@@ -24,5 +24,19 @@ service firebase.storage {
       allow update: if false;
       allow delete: if isMainAdmin();
     }
+
+    // Supporting files and pictures of an event (Create event page). Only the event's host adds or removes
+    // them (the event must exist first, so the host can be checked); any signed-in person can read.
+    // An admin may also remove one. Pictures are shown through their download links.
+    match /eventFiles/{eventId}/{file} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && firestore.get(/databases/(default)/documents/events/$(eventId)).data.hostId == request.auth.uid
+                    && request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.*|text/plain');
+      allow update: if false;
+      allow delete: if request.auth != null
+                    && (firestore.get(/databases/(default)/documents/events/$(eventId)).data.hostId == request.auth.uid || isAdmin());
+    }
   }
 }

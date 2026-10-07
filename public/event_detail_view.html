@@ -149,6 +149,14 @@
   .sf-generic-icon svg{stroke:var(--rust);}
   .sf-name{font-size:12.5px;font-weight:700;line-height:1.3;}
   .sf-view{font-size:11px;opacity:.55;margin-top:1px;}
+  /* supporting pictures: a left-to-right album of 2-inch pictures; other files stay as cards */
+  .sf-group-title{font-size:12.5px;font-weight:700;opacity:.7;margin:12px 0 6px;}
+  .sf-group-title:first-child{margin-top:0;}
+  .sf-album{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;}
+  .sf-photo{flex:0 0 192px;width:192px;height:192px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card);scroll-snap-align:start;display:block;}
+  .sf-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+  .sf-files{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
+  @media (max-width:420px){ .sf-files{grid-template-columns:1fr;} }
 
 </style>
 </head>
@@ -441,20 +449,47 @@ if(data.includes && data.includes.length){
 
 function fileIcon(){ return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>'; }
 
-const sfGrid = document.getElementById('supportingFilesGrid');
-if(data.supportingFiles && data.supportingFiles.length){
-  sfGrid.innerHTML = data.supportingFiles.map(f => {
-    const thumb = f.type === 'image'
-      ? `<img src="${f.url}" alt="${f.name}">`
-      : `<div class="sf-generic-icon">${fileIcon()}</div>`;
-    return `<a class="sf-card" href="${f.url}" target="_blank" rel="noopener">
-      ${thumb}
-      <div><div class="sf-name">${f.name}</div><div class="sf-view">View</div></div>
-    </a>`;
+// Supporting files: pictures become a scrollable album of 2-inch pictures, other files stay as cards.
+// Files are grouped under the title the host gave them (e.g. "Route maps").
+function renderSupportingFilesHtml(list){
+  const e = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const groups = [];
+  list.forEach(f => {
+    const title = (f.title || '').trim();
+    let g = groups.find(x => x.title === title);
+    if(!g){ g = { title, files: [] }; groups.push(g); }
+    g.files.push(f);
+  });
+  return groups.map(g => {
+    const pics = g.files.filter(f => f.type === 'image');
+    const others = g.files.filter(f => f.type !== 'image');
+    return (g.title ? `<div class="sf-group-title">${e(g.title)}</div>` : '')
+      + (pics.length ? `<div class="sf-album">${pics.map(f => `<a class="sf-photo" href="${e(f.url)}" target="_blank" rel="noopener" title="${e(f.name)}"><img src="${e(f.url)}" alt="${e(f.name)}" loading="lazy"></a>`).join('')}</div>` : '')
+      + (others.length ? `<div class="sf-files">${others.map(f => `<a class="sf-card" href="${e(f.url)}" target="_blank" rel="noopener"><div class="sf-generic-icon">${fileIcon()}</div><div><div class="sf-name">${e(f.name)}</div><div class="sf-view">View</div></div></a>`).join('')}</div>` : '');
   }).join('');
-} else {
-  document.getElementById('supportingFilesSection').style.display = 'none';
 }
+function showSupportingFiles(list){
+  const sec = document.getElementById('supportingFilesSection'), grid = document.getElementById('supportingFilesGrid');
+  if(Array.isArray(list) && list.length){ grid.style.display = 'block'; grid.innerHTML = renderSupportingFilesHtml(list); sec.style.display = ''; }
+  else { sec.style.display = 'none'; }
+}
+showSupportingFiles(data.supportingFiles);
+
+// This admin page is opened with the event's text details in the link, but a photo is far too big for a
+// link. So, for a real event, read its cover photo and supporting files straight from Firestore (the
+// signed-in admin may read any event). Nothing else on the page depends on this.
+(async function loadCoverAndFiles(){
+  const id = params.get('id');
+  if(!id || typeof sanghaDb === 'undefined' || typeof firebase === 'undefined') return;
+  try {
+    await new Promise((resolve) => { const t = setTimeout(resolve, 5000); const off = firebase.auth().onAuthStateChanged(() => { clearTimeout(t); off(); resolve(); }); });
+    const snap = await sanghaDb.collection('events').doc(id).get();
+    if(!snap.exists) return;
+    const ev = snap.data();
+    if(ev.image){ document.getElementById('eventImg').src = ev.image; }
+    showSupportingFiles(Array.isArray(ev.supportingFiles) ? ev.supportingFiles : []);
+  } catch(e){ console.warn('Could not load the cover photo and files:', e); }
+})();
 
 document.getElementById('locationRow').innerHTML = data.locationType === 'online'
   ? `${linkIcon()}<div><div class="llabel">Online</div><div>Joining link: ${data.onlineLink ? `<a class="link-val" href="${data.onlineLink}" target="_blank" rel="noopener">${data.onlineLink}</a>` : 'will be shared by the host closer to the date.'}</div></div>`
