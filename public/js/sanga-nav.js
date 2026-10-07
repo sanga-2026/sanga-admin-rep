@@ -22,7 +22,7 @@
   var CSS =
     '.sg-nav{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0;}' +
     '.sg-nav a{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;' +
-      'border:1px solid var(--line,#E4E4E4);background:var(--card,#FFFDF8);color:var(--ink,#0D0D0D);text-decoration:none;}' +
+      'border:1px solid var(--forest,#000);background:var(--forest,#000);color:var(--rust,#F2A94E);text-decoration:none;}' +
     '.sg-nav a:hover{border-color:var(--rust,#F2A94E);}' +
     '.sg-nav a svg{stroke:currentColor;}' +
     '.sg-nav-row{display:flex;justify-content:flex-end;padding:20px 0 8px;}';
