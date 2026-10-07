@@ -62,6 +62,7 @@
   </div>
   <div class="sub">Photos that hosts get when they tap "Suggest one" on Create event. Each category holds up to 100 photos and they are handed out one after the other (1, 2, 3 … then back to 1). Pictures are shrunk to 1280px before they are saved.</div>
 
+  <div class="err" id="topErr" style="margin:-6px 0 14px;"></div>
   <div class="cats" id="cats"></div>
 
   <div class="section" id="panel" style="display:none;">
@@ -102,6 +103,16 @@ let db, storage, isMain = false, me = '';
 let current = null;          // selected category name
 const lists = {};            // category -> [{ id, order, path, url, credit }] sorted by order
 let busy = false;
+
+// Turns a Firebase error into something the person can act on (the raw code stays visible too).
+function explain(e){
+  const code = (e && (e.code || e.message)) || 'unknown error';
+  let hint = '';
+  if(/storage\/unauthorized|storage\/unauthenticated/.test(code)) hint = ' Storage refused the upload: the Storage rules (storage.rules) are probably not deployed yet, or this account has no record in the admins list.';
+  else if(/storage\/bucket-not-found|storage\/project-not-found|storage\/no-default-bucket|storage\/retry-limit-exceeded|storage\/unknown/.test(code)) hint = ' Firebase Storage looks switched off: turn it on in the Firebase console (Build > Storage > Get started).';
+  else if(/permission-denied/.test(code)) hint = ' Firestore refused it: the coverLibrary rules in firestore.rules are probably not deployed yet, or this account has no record in the admins list.';
+  return code + '.' + hint;
+}
 
 const $ = (id) => document.getElementById(id);
 function colRef(cat){ return db.collection('coverLibrary').doc(slug(cat)).collection('photos'); }
@@ -172,7 +183,7 @@ async function upload(files){
   if(!take.length){ $('err').textContent = room <= 0 ? 'This category is full.' : 'Please choose picture files.'; return; }
   busy = true; renderPanel();
   $('progress').style.display = 'block';
-  let done = 0, failed = 0;
+  let done = 0, failed = 0, lastError = null;
   let order = list.reduce((m, p) => Math.max(m, p.order || 0), 0);
   for(const file of take){
     $('status').textContent = 'Uploading ' + (done + failed + 1) + ' of ' + take.length + '…';
@@ -191,6 +202,7 @@ async function upload(files){
       done += 1;
     } catch(e){
       console.warn('Upload failed', file.name, e);
+      lastError = e;
       failed += 1;
     }
     $('progressBar').style.width = Math.round((done + failed) / take.length * 100) + '%';
@@ -200,7 +212,7 @@ async function upload(files){
   $('progress').style.display = 'none'; $('progressBar').style.width = '0';
   const skipped = images.length - take.length;
   $('status').textContent = done + ' added' + (failed ? ', ' + failed + ' failed' : '') + (skipped > 0 ? ', ' + skipped + ' left out (limit of ' + MAX_PHOTOS + ')' : '') + '.';
-  if(failed) $('err').textContent = 'Some pictures could not be saved. Check you are signed in as an admin and that Storage is turned on, then try again.';
+  if(failed) $('err').textContent = failed + ' picture(s) could not be saved. ' + explain(lastError);
   renderCats(); renderPanel();
 }
 
@@ -215,7 +227,7 @@ async function removePhoto(id){
     lists[current] = list.filter(x => x.id !== id);
     $('status').textContent = 'Photo removed.';
   } catch(e){
-    $('err').textContent = 'Could not remove the photo: ' + (e && e.message || e);
+    $('err').textContent = 'Could not remove the photo: ' + explain(e);
   }
   renderCats(); renderPanel();
 }
@@ -266,7 +278,7 @@ SanghaAdmin.ready.then(async (ok) => {
   isMain = !!(SanghaAdmin.admin && SanghaAdmin.admin.role === 'main');
   me = (SanghaAdmin.admin && SanghaAdmin.admin.userId) || '';
   renderCats();
-  await Promise.all(CATEGORIES.map(c => loadCategory(c).catch(e => { console.warn('Load failed', c, e); lists[c] = []; })));
+  await Promise.all(CATEGORIES.map(c => loadCategory(c).catch(e => { console.warn('Load failed', c, e); lists[c] = []; $('topErr').textContent = 'Could not read the library: ' + explain(e); })));
   renderCats();
 });
 </script>
