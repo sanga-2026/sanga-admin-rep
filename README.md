@@ -8,7 +8,7 @@ public/                 the website (the only folder the server exposes)
   index.html            opens the review queue
   login.html            the SAME phone + PIN login as the app (shared from the app)
   admin_review.html     review queue: approve / reject, filtered by each admin's limits
-  admin_settings.html   main admin only: promote people, set each admin's limits
+  admin_settings.html   main admin only: promote people, set each admin's limits, publish sample events
   event_detail_view.html  an event as a reviewer sees it. IDENTICAL to the app's page of the same name (see "Shared files")
   host_profile_view.html  the FULL profile of a person: opens for MAIN admins only (everything they wrote, with what they hid from others marked)
   user_profile_view.html  the privacy-filtered profile, the same view the app shows: this is what a normal admin gets
@@ -18,7 +18,7 @@ main-repo-changes/      three files that belong in the MAIN sanga repo (see step
 ```
 
 ## What is real and what is still sample
-- **Real:** login, the "is this person an admin?" check, and Admin Settings (the people list, promoting, limits, removing). These use Firestore.
+- **Real:** login, the "is this person an admin?" check, and Admin Settings (the people list, promoting, limits, removing, and the "Sample events" section). These use Firestore. A sample event published from "Sample events" (one per category) is stored in the Firestore `sampleEvents` collection and shows up immediately on the app's `/events/sample_events.html` ("Create event like this") — nothing about it is hardcoded in either repo.
 - **Still sample:** the events in the review queue, and the approve/reject decisions (saved in each browser only). Hosts on sample events have no account ID yet, so their profile pages show just the name; use **View profile** in Admin Settings to open a real profile. All of this becomes real when events move into Firestore. Until then, an admin's limits are applied in the page only; add rules that enforce them on the server when events are in Firestore.
 
 ## One-time setup
