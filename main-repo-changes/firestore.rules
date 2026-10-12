@@ -82,6 +82,16 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.hostId == uid();
     }
 
+    // Sample "starter" events on the app's Create Event page — one example per category, so a new
+    // host has something to adapt instead of a blank form (see /events/sample_events.html,
+    // "Create event like this"). Anyone can read them, no login needed, since the sample gallery is
+    // open to any visitor thinking about hosting. Only a MAIN admin can create, change or remove one
+    // (from this admin site's Admin Settings page).
+    match /sampleEvents/{sampleId} {
+      allow read: if true;
+      allow write: if isMainAdmin();
+    }
+
     // A booking. The guest reads their own; the host reads all bookings of their own events.
     // Written ONLY by the booking Cloud Function (it checks the spots left), never by a browser.
     match /registrations/{registrationId} {
