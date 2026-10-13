@@ -527,17 +527,28 @@ const EMPTY = {
 // Writes straight to Firestore (firestore.rules lets any admin change ONLY an event's status, to
 // 'published', 'rejected', 'flagged' or back to 'pending_review' — nothing else about the event).
 // The onSnapshot listener above re-renders every open tab, on every device, the moment this
-// commits — no extra bookkeeping here.
+// commits — no extra bookkeeping here. The card is also updated OPTIMISTICALLY, before Firestore
+// confirms anything: on a slow connection the real confirmation can take a while, and a reviewer
+// who sees no visible change tends to just press the button again. If the write fails, this undoes
+// the local change and falls back to the alert.
 async function decide(id, status, reason){
-  const btn = document.querySelector(`.ev[data-id="${id}"]`);
-  if(btn) btn.querySelectorAll('button').forEach(b => b.disabled = true);
+  const card = document.querySelector(`.ev[data-id="${id}"]`);
+  if(card) card.querySelectorAll('button').forEach(b => b.disabled = true);
+  const ev = liveEvents.find(x => x.id === id);
+  const prevStatus = ev ? ev.status : null;
+  const prevNote = ev ? ev.reviewNote : null;
+  if(ev){
+    ev.status = status;
+    if(status === 'rejected') ev.reviewNote = reason || '';
+    render();
+  }
   try{
     const patch = { status, reviewedBy: me.userId, reviewedAt: firebase.firestore.FieldValue.serverTimestamp() };
     if(status === 'rejected') patch.reviewNote = reason || '';
     await sanghaDb.collection('events').doc(id).update(patch);
   }catch(e){
+    if(ev){ ev.status = prevStatus; ev.reviewNote = prevNote; render(); }
     alert("Couldn't save that decision: " + (e.message || e));
-    if(btn) btn.querySelectorAll('button').forEach(b => b.disabled = false);
   }
 }
 
