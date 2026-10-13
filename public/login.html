@@ -36,6 +36,10 @@
   .back-link{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;opacity:.65;justify-content:center;margin-top:22px;}
   .back-link:hover{opacity:1;}
   .back-link svg{stroke:var(--rust);flex-shrink:0;}
+  .resend-row{text-align:center;font-size:12.5px;opacity:.75;margin-top:16px;}
+  .resend-btn{background:none;border:none;color:var(--rust);font-weight:700;font-size:12.5px;padding:0;text-decoration:underline;}
+  .resend-btn:disabled{opacity:.6;text-decoration:none;cursor:default;}
+  .resend-note{font-size:12px;color:#3f7d3f;margin-top:8px;text-align:center;min-height:1em;}
   #recaptchaHolder{height:0;overflow:hidden;}
 </style>
 <link rel="manifest" href="/manifest.webmanifest">
@@ -114,6 +118,18 @@ if(reason === 'host'){
 let step = 'phone'; // phone -> [otp ->] setpin | checkpin
 let pendingIsNewUser = false;
 let showSecurityAlert = false; // set when the phone step finds 5+ known devices
+let currentPhone = '';         // set once a code has been sent, so "Resend code" can text it again
+let resendReadyAt = 0;         // Date.now() ms after which "Resend code" is clickable again
+
+// Keeps the "Resend code (Ns)" countdown live without needing render() to re-run every second.
+// A no-op whenever the otp step (and its #resendBtn) isn't on screen.
+setInterval(()=>{
+  const btn = document.getElementById('resendBtn');
+  if(!btn || btn.dataset.sending === '1') return;
+  const remaining = Math.ceil((resendReadyAt - Date.now()) / 1000);
+  if(remaining > 0){ btn.disabled = true; btn.textContent = `Resend code (${remaining}s)`; }
+  else { btn.disabled = false; btn.textContent = 'Resend code'; }
+}, 1000);
 
 function setErr(msg){
   const el = document.getElementById('formError');
@@ -173,6 +189,8 @@ function render(){
         }
         btn.textContent = 'Sending…';
         await SanghaAuth.sendOtp(phone, 'recaptchaHolder');
+        currentPhone = phone;
+        resendReadyAt = Date.now() + 30000;
         step = 'otp'; render();
       }catch(e){
         setErr(e.message || 'Could not send code — try again.');
@@ -189,7 +207,9 @@ function render(){
       ${securityAlertBlock}
       <div class="field"><label>SMS code</label><input type="text" inputmode="numeric" maxlength="6" id="fCode" placeholder="123456"></div>
       ${errBlock}
-      <button type="button" class="submit-btn" id="submitBtn">Verify</button>`;
+      <button type="button" class="submit-btn" id="submitBtn">Verify</button>
+      <div class="resend-row">Didn't get a code? <button type="button" class="resend-btn" id="resendBtn">Resend code</button></div>
+      <div class="resend-note" id="resendNote"></div>`;
     document.getElementById('submitBtn').addEventListener('click', async ()=>{
       const code = document.getElementById('fCode').value.trim();
       if(!/^\d{6}$/.test(code)){ setErr('Enter the 6-digit code.'); return; }
@@ -202,6 +222,26 @@ function render(){
         setErr('That code was incorrect or expired.');
         btn.disabled = false; btn.textContent = 'Verify';
       }
+    });
+    const resendBtn = document.getElementById('resendBtn');
+    resendBtn.disabled = Date.now() < resendReadyAt;
+    resendBtn.textContent = resendBtn.disabled ? `Resend code (${Math.ceil((resendReadyAt - Date.now()) / 1000)}s)` : 'Resend code';
+    resendBtn.addEventListener('click', async ()=>{
+      if(Date.now() < resendReadyAt || !currentPhone) return;
+      setErr(''); document.getElementById('resendNote').textContent = '';
+      resendBtn.dataset.sending = '1'; resendBtn.disabled = true; resendBtn.textContent = 'Sending…';
+      try{
+        await SanghaAuth.sendOtp(currentPhone, 'recaptchaHolder');
+        resendReadyAt = Date.now() + 30000;
+        document.getElementById('fCode').value = '';
+        document.getElementById('fCode').focus();
+        document.getElementById('resendNote').textContent = 'Code resent ✓';
+      }catch(e){
+        setErr(e.message || 'Could not resend the code — try again.');
+      }
+      delete resendBtn.dataset.sending;
+      resendBtn.disabled = Date.now() < resendReadyAt;
+      resendBtn.textContent = resendBtn.disabled ? `Resend code (${Math.ceil((resendReadyAt - Date.now()) / 1000)}s)` : 'Resend code';
     });
     return;
   }
