@@ -14,6 +14,7 @@ public/                 the website (the only folder the server exposes)
   host_profile_view.html  the FULL profile of a person: opens for MAIN admins only (everything they wrote, with what they hid from others marked)
   user_profile_view.html  the privacy-filtered profile, the same view the app shows: this is what a normal admin gets
   js/                   firebase-config.js + sanga-auth.js (shared from the app), admin-session.js (new)
+  manifest.webmanifest, sw.js, offline.html, js/sanga-pwa.js   makes the site installable (its own PWA, separate from the app's)
 server.js · Dockerfile · package.json     the Cloud Run server (serves public/ only; no API key needed)
 main-repo-changes/      three files that belong in the MAIN sanga repo (see step 1)
 ```
@@ -37,6 +38,7 @@ main-repo-changes/      three files that belong in the MAIN sanga repo (see step
 - The admin site never reads user records directly: they hold each person's PIN hash. Names and phone numbers come from the `adminListUsers` function. In the same way, the app's profile view of other people asks the `getPublicProfile` function, which applies each person's privacy settings on the server and never returns a phone number or PIN data.
 - A custom address such as `admin.yourdomain.com`: Cloud Run → Domain mappings, then add it to the authorized domains in step 4.
 - **Profiles.** When a main admin opens a host, they get the full profile (`host_profile_view.html`, through the `adminGetProfile` function), including what the person chose to hide from other people. A normal admin gets the privacy-filtered profile (`user_profile_view.html`, through `getPublicProfile`). Neither page ever receives a phone number or PIN data. Every full look is recorded in the Firestore collection `adminAccessLog` (who looked, at whom, when); only the function can write it and browsers cannot read it. Tell your users, in your privacy policy, that staff can see profile content for moderation.
+- **Installable.** An admin can add this site to their phone's home screen or install it as a desktop app — it shows up as "Sanga Admin", separate from the Sanga app if that's installed too. Works automatically once the site is served over HTTPS; nothing to turn on.
 
 ## Shared files (keep them in step with the app repo)
 Identical in the app repo and here, so each is maintained once. When you change one, copy it to the other repo:

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offline</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-family:'Lato',system-ui,sans-serif;text-align:center;padding:24px;}
+  img{width:96px;height:96px;border-radius:22px;margin-bottom:20px;}
+  h1{font-size:22px;margin:0 0 8px;}
+  p{margin:0 0 22px;opacity:.8;font-size:15px;line-height:1.5;}
+  button{background:#F2A94E;color:#000;font-weight:700;font-size:15px;padding:12px 26px;border:0;border-radius:12px;cursor:pointer;}
+</style>
+</head>
+<body>
+  <div>
+    <img src="/icons/icon-192.png" alt="">
+    <h1>You're offline</h1>
+    <p>Sanga Admin needs an internet connection to reach Firebase.<br>Check your connection and try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </div>
+</body>
+</html>
