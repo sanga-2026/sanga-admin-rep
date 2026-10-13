@@ -32,7 +32,14 @@
     g.innerHTML = '<div style="max-width:420px;">' + inner + '</div>';
   }
   function openPage() { var g = document.getElementById('sgGate'); if (g) g.parentNode.removeChild(g); html.classList.remove('sg-locked'); }
-  function logOut() { try { SanghaAuth.logOut(); } catch (e) { } window.location.href = '/login.html'; }
+  // Shows feedback right away (instead of an apparently frozen screen) and waits for Firebase's own
+  // sign-out to finish before navigating away — navigating immediately, mid sign-out, is what let the
+  // page redirect to /login.html before Firebase had actually dropped the session.
+  async function logOut() {
+    gate('<div style="opacity:.6">Logging out…</div>');
+    try { await SanghaAuth.logOut(); } catch (e) { }
+    window.location.href = '/login.html';
+  }
   var BTN = 'margin-top:14px;padding:10px 20px;border-radius:10px;border:1px solid #E4E4E4;background:#fff;font-weight:700;cursor:pointer;';
 
   SanghaAdmin.ready = (async function () {
