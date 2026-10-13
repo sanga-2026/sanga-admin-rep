@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event prototypes — Sangha admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#FFFFFF; --card:#FFFDF8; --forest:#000; --rust:#F2A94E; --sage:#FBE3B8; --ink:#0D0D0D; --line:#E4E4E4; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Lato',sans-serif;-webkit-font-smoothing:antialiased;}
+  button,select,input,textarea{font-family:inherit;}
+  button{cursor:pointer;}
+  a{color:inherit;text-decoration:none;}
+  .wrap{max-width:820px;margin:0 auto;padding:20px 20px 80px;}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
+  .title{font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;}
+  .sub{font-size:13.5px;opacity:.65;margin:4px 0 18px;line-height:1.5;}
+  .nav-link{font-size:13px;font-weight:700;padding:9px 14px;border-radius:10px;border:1px solid var(--forest);display:inline-block;}
+  .nav-link:hover{background:var(--forest);color:#fff;}
+  .blocked{background:#fdecea;border:1px solid #e5b4ac;border-radius:16px;padding:32px 24px;text-align:center;}
+  .blocked h2{font-family:'Poppins',sans-serif;font-size:20px;margin:0 0 8px;color:#c0392b;}
+  .blocked p{font-size:13.5px;opacity:.8;margin:0 0 18px;line-height:1.6;}
+  .err{color:#c0392b;font-size:12.5px;display:none;}
+  .seed-box{background:var(--sage);border:1px solid var(--rust);border-radius:14px;padding:16px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .seed-box .txt{flex:1;min-width:220px;}
+  .seed-box .t{font-weight:700;font-size:13.5px;}
+  .seed-box .s{font-size:12px;opacity:.75;margin-top:2px;line-height:1.5;}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:20px;}
+  .sec-title{font-family:'Poppins',sans-serif;font-size:16px;font-weight:700;margin-bottom:2px;}
+  .sec-sub{font-size:12.5px;opacity:.6;margin-bottom:14px;line-height:1.5;}
+  .btn{padding:8px 14px;border-radius:8px;font-weight:700;font-size:12.5px;border:none;background:var(--rust);color:#fff;}
+  .btn:hover{opacity:.9;}
+  .btn.dark{background:var(--ink);}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn.ghost:hover{border-color:#c0392b;color:#c0392b;}
+  .btn[disabled]{opacity:.5;cursor:not-allowed;}
+  .card{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:#fff;}
+  .card:last-child{margin-bottom:0;}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;font-weight:700;margin:14px 0 6px;}
+  .status{font-size:11.5px;opacity:.6;margin-left:10px;}
+
+  /* ---------------- event prototype cards + form ---------------- */
+  .se-field{margin:14px 0 6px;}
+  .se-input,.se-textarea,.se-select{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:13px;outline:none;}
+  .se-input:focus,.se-textarea:focus,.se-select:focus{border-color:var(--rust);}
+  .se-textarea{resize:vertical;min-height:64px;line-height:1.5;}
+  .se-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .se-summary{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .se-title{font-weight:700;font-size:14px;}
+  .se-cat{font-size:11px;opacity:.55;text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:3px;}
+  .se-desc{font-size:12px;opacity:.65;margin-top:4px;line-height:1.5;}
+  .se-actions{display:flex;gap:8px;flex-shrink:0;}
+  .se-form{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);display:none;}
+  .se-form.open{display:block;}
+  .se-err{font-size:12px;color:#c0392b;margin-top:8px;min-height:15px;}
+</style>
+<style>html.sg-locked body{visibility:hidden}</style>
+<script>document.documentElement.classList.add("sg-locked")</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="title">Event prototypes</div>
+    <a class="nav-link" href="admin_settings.html">← Admin Settings</a>
+  </div>
+  <div class="sub">One example event per category, shown on the app's <b>Create event like this</b> page so a new host has something to adapt instead of a blank form. Publishing here is live immediately.</div>
+
+  <div class="err" id="topErr"></div>
+
+  <div id="blocked" class="blocked" style="display:none;">
+    <h2>This page is for the main admin only</h2>
+    <p>You're an admin, so you can review events, but publishing event prototypes is limited to the main admin.</p>
+    <a class="nav-link" href="admin_settings.html">← Admin Settings</a>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="seed-box">
+      <div class="txt">
+        <div class="t">Need something to test with right now?</div>
+        <div class="s">Publishes 3 ready-made prototypes (Hiking, Yoga, Music) with real content, instantly — handy for trying out "Create event like this" on the app without filling in a form first.</div>
+      </div>
+      <button class="btn dark" type="button" id="seedBtn">Seed 3 test prototypes</button>
+      <span class="status" id="seedStatus"></span>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">Prototypes</div>
+      <div class="sec-sub">One slot per category — Create to add one, Edit to change it, Unpublish to remove it from the app.</div>
+      <div id="sampleEventsList"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/sanga-auth.js"></script>
+<script src="/js/admin-session.js"></script>
+<script>
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showError(msg){ const el = document.getElementById('topErr'); el.textContent = msg; el.style.display = 'block'; }
+function getCurrentAdmin(){ return (window.SanghaAdmin && SanghaAdmin.admin) || { role:'admin', userId:'', name:'', roleLabel:'', avatar:'', scope:null }; }
+
+/* ---------------- event prototypes ----------------
+   One Firestore doc per category in Firestore `sampleEvents` (doc id = a slug of the category, so
+   there is always at most one per slot — publishing again just overwrites it). Read by anyone on the
+   app's /events/sample_events.html; written here, by a main admin, only. These are the APP's event
+   categories (the Create Event page's dropdown). */
+const EVENT_CATEGORIES = ["Hiking", "Walk & connect", "Yoga", "Sustainability", "Refresh & Reset", "Music", "Sports", "Gardening", "Rooted in nature"];
+const YOGA_SUBTYPES = ["Yoga asanas", "Pranayama", "Meditation", "Yoga nidra"];
+function sampleEventSlug(cat){ return 'sample_' + String(cat).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''); }
+
+let sampleEvents = {};   // slug -> Firestore doc data, only for categories that have been published
+
+async function loadSampleEvents(){
+  try{
+    const snap = await sanghaDb.collection('sampleEvents').get();
+    sampleEvents = {};
+    snap.forEach(d => { sampleEvents[d.id] = d.data() || {}; });
+  }catch(e){ showError("Couldn't load event prototypes: " + (e.message || e)); }
+}
+
+function truncate(s, n){ s = String(s || ''); n = n || 140; return s.length > n ? s.slice(0, n) + '…' : s; }
+
+function renderSampleEvents(){
+  const wrap = document.getElementById('sampleEventsList');
+  wrap.innerHTML = EVENT_CATEGORIES.map(cat => {
+    const slug = sampleEventSlug(cat);
+    const ev = sampleEvents[slug];
+    return `
+    <div class="card">
+      <div class="se-summary">
+        <div style="min-width:0;">
+          <div class="se-cat">${esc(cat)}</div>
+          ${ev
+            ? `<div class="se-title">${esc(ev.title || '(untitled)')}</div><div class="se-desc">${esc(truncate(ev.desc))}</div>`
+            : `<div class="se-desc">Not created yet.</div>`}
+        </div>
+        <div class="se-actions">
+          ${ev
+            ? `<button class="btn ghost" type="button" data-se-edit="${esc(slug)}">Edit</button><button class="btn ghost" type="button" data-se-unpublish="${esc(slug)}">Unpublish</button>`
+            : `<button class="btn" type="button" data-se-edit="${esc(slug)}">Create</button>`}
+        </div>
+      </div>
+      <div class="se-form" id="se-form-${esc(slug)}"></div>
+    </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('[data-se-edit]').forEach(b => b.onclick = () => toggleSampleEventForm(b.dataset.seEdit));
+  wrap.querySelectorAll('[data-se-unpublish]').forEach(b => b.onclick = () => unpublishSampleEvent(b.dataset.seUnpublish));
+}
+
+function sampleEventFormHtml(cat, ev){
+  ev = ev || {};
+  const aud = ev.audience || 'everyone';
+  const isFree = !!ev.isFree;
+  const maxCountMode = ev.maxCountMode || 'limit';
+  const priceMode = ev.priceMode || 'perPerson';
+  const bookingType = ev.bookingType || 'instant';
+  return `
+    <div class="se-field">
+      <div class="lbl">Title</div>
+      <input class="se-input" data-field="title" type="text" maxlength="120" value="${esc(ev.title || '')}" placeholder="e.g. Early Morning Hike to the Ridge Line">
+    </div>
+    ${cat === 'Yoga' ? `
+    <div class="se-field">
+      <div class="lbl">Subcategory</div>
+      <select class="se-select" data-field="subcategory">
+        <option value="">—</option>
+        ${YOGA_SUBTYPES.map(t => `<option value="${esc(t)}" ${ev.subcategory === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}
+      </select>
+    </div>` : ''}
+    <div class="se-field">
+      <div class="lbl">Description</div>
+      <textarea class="se-textarea" data-field="desc" maxlength="1200" placeholder="What happens, what to bring, who it's for...">${esc(ev.desc || '')}</textarea>
+    </div>
+    <div class="se-row-2">
+      <div class="se-field">
+        <div class="lbl">Who is this for?</div>
+        <select class="se-select" data-field="audience">
+          <option value="everyone" ${aud === 'everyone' ? 'selected' : ''}>Everyone</option>
+          <option value="kids" ${aud === 'kids' ? 'selected' : ''}>Kids</option>
+          <option value="group" ${aud === 'group' ? 'selected' : ''}>Group</option>
+        </select>
+      </div>
+      <div class="se-field">
+        <div class="lbl">Cover image URL</div>
+        <input class="se-input" data-field="image" type="text" value="${esc(ev.image || '')}" placeholder="https://...">
+      </div>
+    </div>
+    <div class="se-field" data-aud-block="kids" style="display:${aud === 'kids' ? '' : 'none'};">
+      <div class="lbl">Age range</div>
+      <input class="se-input" data-field="ageRange" type="text" value="${esc(ev.ageRange || '')}" placeholder="e.g. Ages 6–12">
+    </div>
+    <div class="se-row-2" data-aud-block="group" style="display:${aud === 'group' ? '' : 'none'};">
+      <div class="se-field">
+        <div class="lbl">Minimum group size</div>
+        <input class="se-input" data-field="minSize" type="number" min="2" value="${esc(ev.minSize || '')}">
+      </div>
+      <div class="se-field">
+        <div class="lbl">Maximum group size</div>
+        <input class="se-input" data-field="maxSize" type="number" min="2" value="${esc(ev.maxSize || '')}">
+      </div>
+    </div>
+    <div class="se-row-2">
+      <div class="se-field">
+        <div class="lbl">Price</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:6px;"><input type="checkbox" data-field="isFree" ${isFree ? 'checked' : ''}> This is free</label>
+        <input class="se-input" data-field="price" type="number" min="0" step="0.01" value="${esc(ev.price || '')}" placeholder="e.g. 15" style="display:${isFree ? 'none' : ''};" data-price-input>
+      </div>
+      <div class="se-field">
+        <div class="lbl">Price covers</div>
+        <select class="se-select" data-field="priceMode" style="display:${isFree ? 'none' : ''};" data-price-input>
+          <option value="perPerson" ${priceMode === 'perPerson' ? 'selected' : ''}>Per person</option>
+          <option value="total" ${priceMode === 'total' ? 'selected' : ''}>Total for the whole group</option>
+        </select>
+      </div>
+    </div>
+    <div class="se-row-2">
+      <div class="se-field">
+        <div class="lbl">Guest limit</div>
+        <select class="se-select" data-field="maxCountMode">
+          <option value="limit" ${maxCountMode === 'limit' ? 'selected' : ''}>Enter count</option>
+          <option value="nolimit" ${maxCountMode === 'nolimit' ? 'selected' : ''}>No limit</option>
+        </select>
+      </div>
+      <div class="se-field">
+        <div class="lbl">Max guests</div>
+        <input class="se-input" data-field="maxCount" type="number" min="1" value="${esc(ev.maxCount || '')}" style="display:${maxCountMode === 'nolimit' ? 'none' : ''};" data-maxcount-input>
+      </div>
+    </div>
+    <div class="se-field">
+      <div class="lbl">What's included <span style="font-weight:400;opacity:.7;">(one per line)</span></div>
+      <textarea class="se-textarea" data-field="includes" placeholder="Trail guide&#10;Water and snacks">${esc((ev.includes || []).join('\n'))}</textarea>
+    </div>
+    <div class="se-field">
+      <div class="lbl">Cancellation policy</div>
+      <textarea class="se-textarea" data-field="cancellation" placeholder="e.g. Full refund up to 24 hours before.">${esc(ev.cancellation || '')}</textarea>
+    </div>
+    <div class="se-field">
+      <div class="lbl">Booking</div>
+      <select class="se-select" data-field="bookingType">
+        <option value="instant" ${bookingType === 'instant' ? 'selected' : ''}>Automatic confirmation</option>
+        <option value="request" ${bookingType === 'request' ? 'selected' : ''}>Requires host approval</option>
+      </select>
+    </div>
+    <div class="se-err" data-se-err></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+      <button class="btn" type="button" data-se-publish>Publish</button>
+      <button class="btn ghost" type="button" data-se-cancel>Cancel</button>
+      <span class="status" data-se-status></span>
+    </div>
+  `;
+}
+
+function wireSampleEventForm(slug, cat, host){
+  const audSel = host.querySelector('[data-field="audience"]');
+  audSel.addEventListener('change', () => {
+    const kidsBlock = host.querySelector('[data-aud-block="kids"]');
+    const groupBlock = host.querySelector('[data-aud-block="group"]');
+    if(kidsBlock) kidsBlock.style.display = audSel.value === 'kids' ? '' : 'none';
+    if(groupBlock) groupBlock.style.display = audSel.value === 'group' ? '' : 'none';
+  });
+  const freeBox = host.querySelector('[data-field="isFree"]');
+  freeBox.addEventListener('change', () => {
+    host.querySelectorAll('[data-price-input]').forEach(el => { el.style.display = freeBox.checked ? 'none' : ''; });
+  });
+  const mcMode = host.querySelector('[data-field="maxCountMode"]');
+  mcMode.addEventListener('change', () => {
+    host.querySelector('[data-maxcount-input]').style.display = mcMode.value === 'nolimit' ? 'none' : '';
+  });
+  host.querySelector('[data-se-cancel]').addEventListener('click', () => toggleSampleEventForm(slug));
+  host.querySelector('[data-se-publish]').addEventListener('click', () => publishSampleEvent(slug, cat, host));
+}
+
+function toggleSampleEventForm(slug){
+  const host = document.getElementById('se-form-' + slug);
+  if(!host) return;
+  if(host.classList.contains('open')){ host.classList.remove('open'); host.innerHTML = ''; return; }
+  const cat = EVENT_CATEGORIES.find(c => sampleEventSlug(c) === slug);
+  host.innerHTML = sampleEventFormHtml(cat, sampleEvents[slug]);
+  host.classList.add('open');
+  wireSampleEventForm(slug, cat, host);
+}
+
+async function publishSampleEvent(slug, cat, host){
+  const val = (name) => { const el = host.querySelector(`[data-field="${name}"]`); return el ? el.value : ''; };
+  const title = val('title').trim();
+  const desc = val('desc').trim();
+  const errEl = host.querySelector('[data-se-err]');
+  errEl.textContent = '';
+  if(!title || !desc){ errEl.textContent = 'Title and description are required.'; return; }
+
+  const audience = val('audience') || 'everyone';
+  const isFree = host.querySelector('[data-field="isFree"]').checked;
+  const maxCountMode = val('maxCountMode') || 'limit';
+  const includes = val('includes').split('\n').map(s => s.trim()).filter(Boolean);
+
+  const doc = {
+    category: cat,
+    subcategory: cat === 'Yoga' ? val('subcategory') : '',
+    title, desc, audience,
+    ageRange: audience === 'kids' ? val('ageRange').trim() : '',
+    minSize: audience === 'group' ? (parseInt(val('minSize'), 10) || '') : '',
+    maxSize: audience === 'group' ? (parseInt(val('maxSize'), 10) || '') : '',
+    isFree,
+    price: isFree ? 0 : (parseFloat(val('price')) || 0),
+    priceMode: val('priceMode') || 'perPerson',
+    maxCountMode,
+    maxCount: maxCountMode === 'limit' ? (parseInt(val('maxCount'), 10) || '') : '',
+    image: val('image').trim(),
+    includes,
+    cancellation: val('cancellation').trim(),
+    bookingType: val('bookingType') || 'instant',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedBy: getCurrentAdmin().userId,
+  };
+
+  const btn = host.querySelector('[data-se-publish]');
+  const statusEl = host.querySelector('[data-se-status]');
+  btn.disabled = true; statusEl.textContent = 'Publishing…';
+  try{
+    await sanghaDb.collection('sampleEvents').doc(slug).set(doc);
+    sampleEvents[slug] = doc;
+    renderSampleEvents();
+  }catch(e){
+    btn.disabled = false; statusEl.textContent = '';
+    errEl.textContent = (e && e.code === 'permission-denied') ? "Your account isn't allowed to publish event prototypes." : "Couldn't publish: " + ((e && e.message) || e);
+  }
+}
+
+async function unpublishSampleEvent(slug){
+  if(!window.confirm('Remove this event prototype? It will no longer appear in the app.')) return;
+  try{
+    await sanghaDb.collection('sampleEvents').doc(slug).delete();
+    delete sampleEvents[slug];
+    renderSampleEvents();
+  }catch(e){ showError("Couldn't remove that event prototype: " + ((e && e.message) || e)); }
+}
+
+/* ---------------- "seed 3 test prototypes" dev helper ----------------
+   Publishes 3 ready-made prototypes in one click — handy for testing the app's sample-events
+   gallery without filling in three forms by hand first. Overwrites those 3 slots if already set. */
+const SEED_SAMPLES = [
+  {
+    category: 'Hiking', subcategory: '',
+    title: 'Early Morning Hike to the Ridge Line',
+    desc: "A steady, unhurried hike up to a ridge line with a wide view — we go slow enough to talk, stop often for water and photos, and sit together at the top before heading back down. Good trail shoes and a refillable water bottle are all you need.",
+    audience: 'everyone', ageRange: '', minSize: '', maxSize: '',
+    isFree: false, price: 15, priceMode: 'perPerson',
+    maxCountMode: 'limit', maxCount: 12,
+    image: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&q=80&auto=format&fit=crop',
+    includes: ['A trained trail guide', 'Trail map and safety briefing', 'Light snacks and water at the summit'],
+    cancellation: 'Full refund up to 24 hours before the hike. No refund after that, since the group size is locked in with the trail permit.',
+    bookingType: 'instant',
+  },
+  {
+    category: 'Yoga', subcategory: 'Yoga asanas',
+    title: 'Gentle Vinyasa Flow at Sunrise',
+    desc: "A beginner-friendly vinyasa flow timed to the sunrise — slow, breath-led movement to wake up the body, followed by a few minutes of stillness as the light comes up. All levels welcome; mats are provided if you don't have your own.",
+    audience: 'everyone', ageRange: '', minSize: '', maxSize: '',
+    isFree: false, price: 12, priceMode: 'perPerson',
+    maxCountMode: 'limit', maxCount: 15,
+    image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&q=80&auto=format&fit=crop',
+    includes: ['Yoga mat (if you need one)', 'Herbal tea afterward'],
+    cancellation: 'Full refund up to 12 hours before class. Within 12 hours, we can move you to the next session instead.',
+    bookingType: 'instant',
+  },
+  {
+    category: 'Music', subcategory: '',
+    title: 'Kirtan & Sound Healing Evening',
+    desc: "An evening of call-and-response chanting (kirtan) followed by a sound healing session with singing bowls — no musical experience needed, just a willingness to hum, chant, or simply lie back and listen. Bring a mat or cushion to sit or lie on.",
+    audience: 'everyone', ageRange: '', minSize: '', maxSize: '',
+    isFree: false, price: 18, priceMode: 'perPerson',
+    maxCountMode: 'limit', maxCount: 25,
+    image: 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=800&q=80&auto=format&fit=crop',
+    includes: ['Mat or cushion (if you need one)', 'Lyric sheets for the chants'],
+    cancellation: 'Full refund up to 24 hours before the session.',
+    bookingType: 'instant',
+  },
+];
+
+async function seedTestSamples(){
+  const btn = document.getElementById('seedBtn');
+  const statusEl = document.getElementById('seedStatus');
+  btn.disabled = true; statusEl.textContent = 'Publishing 3 test prototypes…';
+  const by = getCurrentAdmin().userId;
+  try{
+    await Promise.all(SEED_SAMPLES.map(s => {
+      const slug = sampleEventSlug(s.category);
+      const doc = Object.assign({}, s, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: by });
+      sampleEvents[slug] = doc;
+      return sanghaDb.collection('sampleEvents').doc(slug).set(doc);
+    }));
+    renderSampleEvents();
+    statusEl.textContent = 'Done — Hiking, Yoga and Music are published.';
+  }catch(e){
+    statusEl.textContent = '';
+    showError((e && e.code === 'permission-denied') ? "Your account isn't allowed to publish event prototypes." : "Couldn't seed test prototypes: " + ((e && e.message) || e));
+  }
+  btn.disabled = false;
+}
+document.getElementById('seedBtn').addEventListener('click', seedTestSamples);
+
+SanghaAdmin.ready.then(async (ok) => {
+  if(!ok) return;
+  const isMain = !!(SanghaAdmin.admin && SanghaAdmin.admin.role === 'main');
+  document.getElementById('mainContent').style.display = isMain ? '' : 'none';
+  document.getElementById('blocked').style.display = isMain ? 'none' : '';
+  if(!isMain) return;
+  await loadSampleEvents();
+  renderSampleEvents();
+});
+</script>
+</body>
+</html>
