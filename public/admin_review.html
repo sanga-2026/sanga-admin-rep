@@ -585,7 +585,7 @@ function render(){
       ${e.status === 'published' ? `<div class="note">This event is live on Sangha home.</div>` : ''}
       ${e.status === 'flagged' ? `<div class="note">🚩 Flagged for rejection — needs a final decision.<button class="undo" data-clearflag="${esc(e.id)}" type="button">Clear flag</button></div>` : ''}
       <div class="acts">
-        <button class="approve" data-approve="${esc(e.id)}" type="button"${e.status === 'published' ? ' disabled' : ''}>Approve</button>
+        <button class="approve" data-approve="${esc(e.id)}" type="button"${e.status === 'published' ? ' disabled' : ''}>${e.status === 'published' ? 'Approved' : 'Approve'}</button>
         <button class="reject" data-reject="${esc(e.id)}" type="button">Reject</button>
       </div>
       <div class="reason" id="reason-${esc(e.id)}">
