@@ -19,6 +19,7 @@
 (function () {
   var HOME_URL = '/admin_review.html';
   var HOME_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>';
+  var BACK_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
   var CSS =
     '.sg-nav{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0;}' +
     '.sg-nav a{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;' +
@@ -45,7 +46,21 @@
     host.insertBefore(row, host.firstChild);
   }
 
+  // The top-left corner of event_detail_view.html is a link to "/" (the app's own home) that makes
+  // no sense on the admin site, where this page is always opened from the review queue in a new tab
+  // (so the browser's own Back button has nowhere to go). Repoint that same spot to a back arrow
+  // that returns to the review queue, without touching the shared HTML file itself.
+  function mountBack() {
+    var badge = document.querySelector('.badge-wrap');
+    if (!badge || badge.dataset.sgBack) return;
+    badge.dataset.sgBack = '1';
+    badge.setAttribute('href', HOME_URL);
+    badge.setAttribute('title', 'Back to review queue');
+    badge.innerHTML = '<div class="badge">' + BACK_ICON + '</div><div class="badge-label">Back</div>';
+  }
+
   function afterAdmin() {
+    mountBack();
     mountHome();
 
     // 3. the host's name and avatar open the right profile page for this kind of admin

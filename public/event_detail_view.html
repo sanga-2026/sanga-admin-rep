@@ -816,9 +816,12 @@ if(isReviewer){
     let currentStatus = params.get('reviewStatus') || '';
 
     function paintDecision(){
-      approveBtn.classList.toggle('is-active', currentStatus === 'published');
+      const approved = currentStatus === 'published';
+      approveBtn.classList.toggle('is-active', approved);
+      approveBtn.innerHTML = checkIcon() + (approved ? ' Approved' : ' Approve');
+      approveBtn.disabled = approved;
       flagBtn.classList.toggle('is-active', currentStatus === 'flagged');
-      noteEl.textContent = currentStatus === 'published' ? '✓ You approved this event.' : '';
+      noteEl.textContent = approved ? '✓ You approved this event.' : '';
     }
 
     async function decide(status){
@@ -829,11 +832,11 @@ if(isReviewer){
                          reviewedAt: firebase.firestore.FieldValue.serverTimestamp() };
         await sanghaDb.collection('events').doc(data.id).update(patch);
         currentStatus = status;
-        paintDecision();
       }catch(e){
         alert("Couldn't save that decision: " + (e.message || e));
       }finally{
-        approveBtn.disabled = false; flagBtn.disabled = false;
+        flagBtn.disabled = false;
+        paintDecision();
       }
     }
     approveBtn.addEventListener('click', () => decide('published'));
