@@ -42,8 +42,29 @@
   }
   var BTN = 'margin-top:14px;padding:10px 20px;border-radius:10px;border:1px solid #E4E4E4;background:#fff;font-weight:700;cursor:pointer;';
 
+  // Every page here is a separate full page load (no single-page-app routing), so without this,
+  // switching between the review queue and admin settings re-runs the whole access check — wait
+  // for Firebase Auth to restore the session, then a Firestore read of this account's admin record
+  // — on every single click. That round trip is the "Checking your access…" lag, worse on mobile
+  // where the network and CPU make it more visible. Caching a successful check for a few minutes
+  // (per tab, per account — sessionStorage is already scoped that way) means hopping between admin
+  // pages feels instant, while a revoked admin is still caught within the cache window, not left
+  // with standing access.
+  var CACHE_KEY = 'sg_admin_cache_v1';
+  var CACHE_TTL_MS = 3 * 60 * 1000;
+  function readCache(uid) {
+    try {
+      var c = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+      if (c && c.uid === uid && (Date.now() - c.ts) < CACHE_TTL_MS) return c.data;
+    } catch (e) { /* corrupt or unavailable: fall through to a fresh check */ }
+    return null;
+  }
+  function writeCache(uid, data) {
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ uid: uid, ts: Date.now(), data: data })); }
+    catch (e) { /* storage full or unavailable: next load just checks fresh again */ }
+  }
+
   SanghaAdmin.ready = (async function () {
-    gate('<div style="opacity:.6">Checking your access…</div>');
     try { await SanghaAuth.whenReady(); } catch (e) { /* treated as not logged in */ }
     var session = window.SanghaAuth ? SanghaAuth.getSession() : null;
 
@@ -52,15 +73,20 @@
       return false;
     }
 
-    var rec;
-    try { rec = await sanghaDb.collection('admins').doc(session.id).get(); }
-    catch (e) {
-      gate('<h2 style="margin:0 0 6px">Could not check your access</h2><div style="opacity:.7">Check your connection and try again.</div><button id="sgRetry" style="' + BTN + '">Try again</button>');
-      document.getElementById('sgRetry').onclick = function () { window.location.reload(); };
-      return false;
+    var d = readCache(session.id);   // a recent successful check for this exact account: skip the read
+    if (!d) {
+      gate('<div style="opacity:.6">Checking your access…</div>');
+      var rec;
+      try { rec = await sanghaDb.collection('admins').doc(session.id).get(); }
+      catch (e) {
+        gate('<h2 style="margin:0 0 6px">Could not check your access</h2><div style="opacity:.7">Check your connection and try again.</div><button id="sgRetry" style="' + BTN + '">Try again</button>');
+        document.getElementById('sgRetry').onclick = function () { window.location.reload(); };
+        return false;
+      }
+      if (rec.exists) { d = rec.data() || {}; writeCache(session.id, d); }
     }
 
-    if (!rec.exists) {   // a normal Sanga account that is not an admin (yet): ask for access automatically
+    if (!d) {   // a normal Sanga account that is not an admin (yet): ask for access automatically
       gate('<div style="opacity:.6">Sending your request…</div>');
       var status = '', why = '';
       try {
@@ -94,7 +120,7 @@
       return false;
     }
 
-    var d = rec.data() || {}, isMain = d.role === 'main';
+    var isMain = d.role === 'main';
     SanghaAdmin.admin = {
       role: isMain ? 'main' : 'admin',
       userId: session.id,
