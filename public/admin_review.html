@@ -354,19 +354,43 @@ const DETAIL_PAGE = 'event_detail_view.html';
 // A host's name opens the full profile for a MAIN admin and the privacy-filtered one for a normal admin.
 function hostProfileUrl(e){ return SanghaAdmin.profileUrl({ id: e.hostId, name: e.hostName }); }
 // Real events don't have a single "groupSize" string or "dateDisplay"/"timeDisplay" — derive them
-// from the raw fields /events/create_event.html actually saves (same logic sanga-rep's own pages use).
+// from the raw fields /events/create_event.html actually saves. This mirrors event_detail_view.html's
+// own niceDay/niceClock/whenOfEvent — admin-rep doesn't load sanga-data.js (it's an intentionally empty
+// stub here, see js/sanga-data.js), so that page can't look the event up itself and needs everything
+// passed through the URL instead; keeping this logic in step with that file is what keeps the review
+// queue's event details matching what a real guest or host would see.
+function niceDay(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if(!m) return '';
+  return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+function niceClock(t){
+  const m = /^(\d{1,2}):(\d{2})/.exec(t || '');
+  if(!m) return '';
+  const h = +m[1];
+  return ((h % 12) || 12) + ':' + m[2] + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+function whenOfEvent(e){
+  let day = '', times = [], iso = '', isoEnd = '';
+  if(e.scheduleMode === 'multi' && Array.isArray(e.sessions) && e.sessions.length){
+    const first = e.sessions[0];
+    day = niceDay(first.startDate);
+    if(first.endDate && first.endDate !== first.startDate) day += ' – ' + niceDay(first.endDate);
+    if(e.sessions.length > 1) day += '  +' + (e.sessions.length - 1) + ' more date' + (e.sessions.length > 2 ? 's' : '');
+    if(first.startTime) times.push(niceClock(first.startTime) + (first.endTime ? ' – ' + niceClock(first.endTime) : ''));
+    if(first.startDate && first.startTime){ iso = first.startDate + 'T' + first.startTime; isoEnd = first.endTime ? (first.endDate || first.startDate) + 'T' + first.endTime : ''; }
+  } else {
+    day = niceDay(e.date);
+    (e.timeBlocks || []).forEach(tb => { if(tb && tb.startTime) times.push(niceClock(tb.startTime) + (tb.endTime ? ' – ' + niceClock(tb.endTime) : '')); });
+    const tb0 = (e.timeBlocks || [])[0];
+    if(e.date && tb0 && tb0.startTime){ iso = e.date + 'T' + tb0.startTime; isoEnd = tb0.endTime ? e.date + 'T' + tb0.endTime : ''; }
+  }
+  return { day, time: times.join(', '), iso, isoEnd };
+}
 function eventGroupSize(e){
-  if(e.audience === 'group') return `${e.minSize || '?'}–${e.maxSize || '?'} guests`;
-  if(e.maxCountMode === 'nolimit') return 'No limit on attendees';
-  return e.maxCount ? `Up to ${e.maxCount} guests` : '';
-}
-function eventDateDisplay(e){
-  return (e.sessions && e.sessions[0] && e.sessions[0].date) ? e.sessions[0].date : (e.date || 'Date TBD');
-}
-function eventTimeDisplay(e){
-  const tb = e.timeBlocks && e.timeBlocks[0];
-  if(!tb || (!tb.startTime && !tb.endTime)) return '';
-  return (tb.startTime || '?') + (tb.endTime ? '–' + tb.endTime : '');
+  if(e.audience === 'group') return e.maxSize ? `Up to ${e.maxSize} guests` : '';
+  if(e.maxCountMode === 'nolimit' || !e.maxCount) return '';
+  return `Up to ${e.maxCount} guests`;
 }
 function eventDetailUrl(e){
   const q = new URLSearchParams({ id: e.id, readonly: '1', review: '1' });
@@ -376,14 +400,27 @@ function eventDetailUrl(e){
   q.set('host', e.hostName || 'Host');
   q.set('category', e.category || '');
   q.set('city', e.city || '');
+  q.set('landmark', e.landmark || '');
   q.set('desc', e.desc || '');
-  q.set('dateDisplay', eventDateDisplay(e));
-  q.set('timeDisplay', eventTimeDisplay(e));
+  const when = whenOfEvent(e);
+  q.set('dateDisplay', when.day || 'Date TBD');
+  q.set('timeDisplay', when.time || '');
+  q.set('isoStart', when.iso || '');
+  q.set('isoEnd', when.isoEnd || '');
   q.set('reviewStatus', e.status || '');
   q.set('duration', e.duration || '');
   q.set('price', e.isFree ? '0' : String(e.price || '0'));
+  q.set('priceMode', e.priceMode || 'perPerson');
   q.set('groupSize', eventGroupSize(e));
+  q.set('locationType', e.locationType || 'person');
+  q.set('address', e.exactAddress || '');
+  q.set('timezone', e.timezone || '');
+  q.set('lat', typeof e.lat === 'number' ? String(e.lat) : '');
+  q.set('lng', typeof e.lng === 'number' ? String(e.lng) : '');
+  q.set('onlineLink', e.onlineLink || '');
+  q.set('img', e.image || '');
   q.set('includes', JSON.stringify(e.includes || []));
+  q.set('supportingFiles', JSON.stringify(Array.isArray(e.supportingFiles) ? e.supportingFiles : []));
   q.set('cancellation', e.cancellation || '');
   return DETAIL_PAGE + '?' + q.toString();
 }
