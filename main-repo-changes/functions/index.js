@@ -182,6 +182,86 @@ exports.adminListUsers = onCall(async (request) => {
 });
 
 /* ------------------------------------------------------------------
+  adminDeleteEvents — "Delete events by date" on the admin site's Admin Settings page. MAIN admins only.
+
+  Two steps, one function:
+    mode 'preview' -> lists the events created in the date range (nothing is deleted).
+    mode 'delete'  -> deletes them, but only if the number of matching events is still the number the
+                      admin saw in the preview (expectedCount); otherwise it asks them to preview again.
+  The range uses the date each event was CREATED (its createdAt), in UTC: from (inclusive) to to (inclusive).
+  Either date may be left empty ("before this date" / "from this date on"), but not both.
+  Per deleted event it also removes: its bookings (registrations), chats, consent form and signed answers,
+  and every person's saved heart. Host reviews stay (they belong to the host). Events that have bookings are
+  skipped unless includeBooked is true. Events with no createdAt date are never touched.
+------------------------------------------------------------------ */
+exports.adminDeleteEvents = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async (request) => {
+  requireAuth(request);
+  const me = await db.collection('admins').doc(request.auth.uid).get();
+  if (!me.exists || me.data().role !== 'main') {
+    throw new HttpsError('permission-denied', 'Main admins only.');
+  }
+  const d = request.data || {};
+  const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const from = isDay(d.from) ? d.from : '';
+  const to = isDay(d.to) ? d.to : '';
+  if (!from && !to) throw new HttpsError('invalid-argument', 'Choose a start date, an end date, or both.');
+  if (from && to && from > to) throw new HttpsError('invalid-argument', 'The start date is after the end date.');
+  const mode = d.mode === 'delete' ? 'delete' : 'preview';
+  const includeBooked = d.includeBooked === true;
+
+  const lower = from ? from + 'T00:00:00.000Z' : '';
+  const nextDay = to ? new Date(new Date(to + 'T00:00:00.000Z').getTime() + 86400000).toISOString() : '';   // end of the "to" day
+  const all = await db.collection('events').get();
+  const matched = [];
+  all.forEach((doc) => {
+    const e = doc.data();
+    const c = e.createdAt ? String(e.createdAt) : '';
+    if (!c) return;
+    if (lower && c < lower) return;
+    if (nextDay && c >= nextDay) return;
+    matched.push(doc);
+  });
+
+  const rows = [];
+  for (const doc of matched) {
+    const regs = await db.collection('registrations').where('eventId', '==', doc.id).get();
+    const e = doc.data();
+    const booked = (parseInt(e.booked, 10) || 0) > 0 || !regs.empty;
+    rows.push({ doc, regs, booked, skip: booked && !includeBooked });
+  }
+  const list = rows.map((r) => {
+    const e = r.doc.data();
+    return { id: r.doc.id, title: String(e.title || '').slice(0, 120), hostName: String(e.hostName || ''), status: String(e.status || ''),
+             createdAt: String(e.createdAt || ''), bookings: r.regs.size, skipped: r.skip };
+  });
+  const todo = rows.filter((r) => !r.skip);
+
+  if (mode === 'preview') {
+    return { events: list, willDelete: todo.length, skipped: rows.length - todo.length };
+  }
+
+  if (parseInt(d.expectedCount, 10) !== todo.length) {
+    throw new HttpsError('failed-precondition', 'The list changed since you previewed it. Preview again before deleting.');
+  }
+  const userRefs = todo.length ? await db.collection('users').listDocuments() : [];
+  const saved = {};
+  for (const u of userRefs) saved[u.id] = new Set((await u.collection('savedEvents').listDocuments()).map((x) => x.id));
+  let deleted = 0;
+  for (const r of todo) {
+    const id = r.doc.id;
+    for (const g of r.regs.docs) await db.recursiveDelete(g.ref);
+    const chats = await db.collection('chats').where('eventId', '==', id).get();
+    for (const c of chats.docs) await db.recursiveDelete(c.ref);
+    for (const u of userRefs) if (saved[u.id].has(id)) await u.collection('savedEvents').doc(id).delete();
+    await db.recursiveDelete(db.collection('consentForms').doc(id));
+    await db.recursiveDelete(r.doc.ref);
+    deleted++;
+  }
+  console.log('adminDeleteEvents: ' + request.auth.uid + ' deleted ' + deleted + ' event(s), range ' + (from || '...') + ' to ' + (to || '...'));
+  return { deleted };
+});
+
+/* ------------------------------------------------------------------
   getPublicProfile — used by the app's "view someone's profile" page.
 
   Reads one person's PRIVATE record here on the server, applies THEIR privacy settings, and returns
