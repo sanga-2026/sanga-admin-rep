@@ -207,6 +207,14 @@
 <script src="/js/sanga-text.js"></script>
 <script src="/js/sanga-auth.js"></script>
 
+<script>
+  // Opened as a pop-up from the booking page (?embed=1): no top icons and no Book now, the booking page is right behind it.
+  if(new URLSearchParams(location.search).get('embed')) document.documentElement.classList.add('embed');
+</script>
+<style>
+  .embed .topbar, .embed #bookBtn, .embed #bookNote, .embed #easyBookBtn{display:none !important;}
+  .embed .wrap{padding-top:8px;}
+</style>
 <div class="wrap">
   <div class="topbar">
     <div class="topbar-left">
@@ -327,6 +335,7 @@ const DEFAULTS = {
   isoEnd: "",
   dateDisplay: "—",
   timeDisplay: "—",
+  repeatText: "",
   duration: "—",
   price: "0",
   priceMode: "perPerson",
@@ -423,6 +432,7 @@ const isPreview = params.get('preview') === '1';
   });
   const when = whenOfEvent(ev);
   if(when.day) DEFAULTS.dateDisplay = when.day;
+  if(window.SanghaData && SanghaData.repeatSummary) DEFAULTS.repeatText = SanghaData.repeatSummary(ev);
   if(when.time) DEFAULTS.timeDisplay = when.time;
   if(when.iso) DEFAULTS.isoStart = when.iso;
   if(when.isoEnd) DEFAULTS.isoEnd = when.isoEnd;
@@ -444,6 +454,7 @@ const data = {
   isoEnd: p('isoEnd'),
   dateDisplay: p('dateDisplay'),
   timeDisplay: p('timeDisplay'),
+  repeatText: p('repeatText'),
   duration: p('duration'),
   price: p('price'),
   priceMode: p('priceMode'),
@@ -542,7 +553,7 @@ const priceText = (parseFloat(data.price) > 0) ? `$${data.price} ${data.priceMod
 
 document.getElementById('metaGrid').innerHTML = `
   <div class="meta-item">${pinIcon()}<div><div class="meta-label">Location</div><div class="meta-val">${data.city}</div>${data.landmark ? `<div class="meta-val" id="landmarkLine" style="font-weight:400;">Near ${String(data.landmark).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</div>` : ''}</div></div>
-  <div class="meta-item">${calIcon()}<div><div class="meta-label">Date</div><div class="meta-val">${data.dateDisplay && data.dateDisplay !== '\u2014' ? data.dateDisplay : 'To be announced'}</div></div></div>
+  <div class="meta-item">${calIcon()}<div><div class="meta-label">Date</div><div class="meta-val">${data.dateDisplay && data.dateDisplay !== '\u2014' ? data.dateDisplay : 'To be announced'}</div>${data.repeatText ? `<div class="meta-val" style="font-weight:400;margin-top:3px;">\u21bb ${String(data.repeatText).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</div>` : ''}</div></div>
   <div class="meta-item">${clockIcon()}<div><div class="meta-label">Time & duration</div><div class="meta-val">${data.timeDisplay && data.timeDisplay !== '\u2014' ? data.timeDisplay + ' · ' : ''}${data.duration}</div></div></div>
   <div class="meta-item">${tagIcon()}<div><div class="meta-label">Price</div><div class="meta-val">${priceText}</div></div></div>
   ${data.groupSize ? `<div class="meta-item">${peopleIcon()}<div><div class="meta-label">Group size</div><div class="meta-val">${data.groupSize}</div></div></div>` : ''}

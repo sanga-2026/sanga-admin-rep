@@ -324,6 +324,18 @@ function eventGroupSize(e){
   if(e.maxCountMode === 'nolimit' || !e.maxCount) return '';
   return `Up to ${e.maxCount} guests`;
 }
+// Mirrors sanga-rep's SanghaData.repeatSummary(), minus the "· N dates" count (admin-rep has no
+// eventOccurrences() to compute that from — the real event isn't loaded here, just its saved fields).
+function eventRepeatText(e){
+  const word = { daily: 'daily', weekly: 'weekly', monthly: 'monthly', quarterly: 'every 3 months', yearly: 'yearly' };
+  if(e.scheduleMode === 'multi' && Array.isArray(e.sessions)){
+    const reps = e.sessions.map(s => s && s.repeat).filter(r => r && r !== 'none');
+    return reps.length ? 'Some sessions repeat (' + Array.from(new Set(reps.map(r => word[r] || r))).join(', ') + ')' : '';
+  }
+  if(!e.repeat || e.repeat === 'none') return '';
+  const until = niceDay(e.repeatUntil);
+  return 'Repeats ' + (word[e.repeat] || e.repeat) + (until ? ' until ' + until : '');
+}
 function eventDetailUrl(e){
   const q = new URLSearchParams({ id: e.id, readonly: '1', review: '1' });
   q.set('hostProfile', hostProfileUrl(e));
@@ -339,6 +351,7 @@ function eventDetailUrl(e){
   q.set('timeDisplay', when.time || '');
   q.set('isoStart', when.iso || '');
   q.set('isoEnd', when.isoEnd || '');
+  q.set('repeatText', eventRepeatText(e));
   q.set('reviewStatus', e.status || '');
   q.set('duration', e.duration || '');
   q.set('price', e.isFree ? '0' : String(e.price || '0'));
