@@ -127,6 +127,18 @@
       <div id="adminsList"></div>
     </div>
 
+    <div class="section" id="deleteSection">
+      <div class="sec-title">Delete events by date</div>
+      <div class="sec-sub">Permanently deletes events by the date they were created, with their bookings, chats, consent forms and saved hearts. Choose a start date, an end date, or both, then preview the list first. Host reviews are kept. This cannot be undone.</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
+        <div><div class="lbl" style="margin-top:0;">From (optional)</div><input class="search" id="delFrom" type="date" style="margin:0;"></div>
+        <div><div class="lbl" style="margin-top:0;">To (optional)</div><input class="search" id="delTo" type="date" style="margin:0;"></div>
+        <button class="btn dark" id="delPreview" type="button">Preview</button>
+      </div>
+      <label style="font-size:12.5px;display:flex;gap:8px;align-items:center;margin-bottom:10px;"><input type="checkbox" id="delBooked"> Also delete events that already have bookings</label>
+      <div id="delResult"></div>
+    </div>
+
   </div>
 </div>
 
@@ -520,6 +532,49 @@ function renderAll(){
   if(!isMain) return;
   renderRequests(); renderStats(); renderUsers(); renderAdmins();
 }
+
+
+/* ---------- Delete events by date (calls the adminDeleteEvents function; main admins only) ---------- */
+(function(){
+  const $ = id => document.getElementById(id);
+  const out = () => $('delResult');
+  let shown = null;   // what the last preview showed: the number of events it would delete
+  const range = () => ({ from: $('delFrom').value, to: $('delTo').value, includeBooked: $('delBooked').checked });
+  const call = (mode, extra) => sanghaFunctions.httpsCallable('adminDeleteEvents')(Object.assign({ mode }, range(), extra || {})).then(r => r.data);
+  const reset = () => { shown = null; out().innerHTML = ''; };
+  ['delFrom', 'delTo', 'delBooked'].forEach(id => $(id).addEventListener('change', reset));
+
+  $('delPreview').addEventListener('click', async () => {
+    const r = range();
+    if(!r.from && !r.to){ out().innerHTML = '<div class="hint" style="color:#c0392b;">Choose a start date, an end date, or both.</div>'; return; }
+    out().innerHTML = '<div class="hint">Looking…</div>';
+    try{
+      const res = await call('preview');
+      shown = res.willDelete;
+      if(!res.events.length){ out().innerHTML = '<div class="empty">No events were created in that range.</div>'; return; }
+      out().innerHTML = res.events.map(e => `<div class="row"><div><div class="name">${esc(e.title || '(no title)')}</div><div class="phone">${esc(e.hostName)} · created ${esc(String(e.createdAt).slice(0, 10))} · ${esc(e.status)} · ${e.bookings} booking${e.bookings === 1 ? '' : 's'}</div></div><div class="push">${e.skipped ? '<span class="badge" style="background:#999;">Skipped: has bookings</span>' : '<span class="badge" style="background:#c0392b;">Will delete</span>'}</div></div>`).join('') +
+        (res.willDelete ? `<div style="margin-top:14px;"><div class="hint">This will permanently delete <b>${res.willDelete}</b> event${res.willDelete === 1 ? '' : 's'}. Type DELETE to confirm.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;"><input class="search" id="delConfirm" type="text" placeholder="DELETE" style="max-width:160px;margin:0;"><button class="btn" id="delGo" type="button" disabled style="background:#c0392b;">Delete ${res.willDelete} event${res.willDelete === 1 ? '' : 's'}</button><span class="status" id="delStatus"></span></div></div>`
+          : '<div class="hint" style="margin-top:12px;">Nothing to delete (all of these were skipped).</div>');
+      const confirm = $('delConfirm'), go = $('delGo');
+      if(!confirm) return;
+      confirm.addEventListener('input', () => { go.disabled = confirm.value.trim() !== 'DELETE'; });
+      go.addEventListener('click', async () => {
+        go.disabled = true; confirm.disabled = true; $('delStatus').textContent = 'Deleting…';
+        try{
+          const done = await call('delete', { expectedCount: shown });
+          out().innerHTML = `<div class="hint" style="color:#1f7a3d;font-size:13px;">Deleted ${done.deleted} event${done.deleted === 1 ? '' : 's'}.</div>`;
+          shown = null;
+        }catch(e){
+          $('delStatus').textContent = (e && e.message) || 'Could not delete. Try again.';
+          go.disabled = false; confirm.disabled = false;
+        }
+      });
+    }catch(e){
+      out().innerHTML = `<div class="hint" style="color:#c0392b;">${esc((e && e.message) || 'Could not load the list.')}</div>`;
+    }
+  });
+})();
 
 document.getElementById('search').addEventListener('input', renderUsers);
 SanghaAdmin.ready.then(async ok => { if(!ok) return; await loadAll(); renderAll(); });
