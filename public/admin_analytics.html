@@ -44,6 +44,9 @@
   .tile-value{font-family:'Poppins',sans-serif;font-size:30px;font-weight:700;line-height:1.1;}
   .tile-sub{font-size:12px;opacity:.6;margin-top:6px;}
   .tile-sub.up{color:#2e7d32;opacity:1;}
+  .tile-breakdown{display:flex;flex-direction:column;gap:3px;margin-top:8px;}
+  .tile-breakdown div{display:flex;align-items:baseline;gap:6px;font-size:12px;opacity:.65;}
+  .tile-breakdown span{font-weight:700;opacity:1;color:var(--ink);min-width:16px;}
 
   .section{margin-top:32px;}
   .section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
@@ -160,18 +163,19 @@ function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&
 function pct(value, max){ return Math.max(0, Math.min(100, Math.round((value / max) * 100))) + '%'; }
 
 /* ---------------------------------------------------------------------------------------------
-   Sample geography tree (country -> state/region -> city -> optional sub-areas within a city),
-   each leaf carrying events/hosts/confirmed-bookings counts. PLACEHOLDER DATA: real cities today
-   only carry a flat city string (see admin_review.html's inScope()) — this page's drill-down
-   assumes a country/state (and, for one city, neighborhood) breakdown that doesn't exist in the
-   event schema yet. Wiring this to Firestore means either adding state/country/area to events
-   (and backfilling), or deriving it from the host's own city/state/country (adminListUsers / host
-   profile), whichever the team decides first.
+   Sample geography tree (country -> state/region -> city -> optional areas within a city ->
+   optional landmarks within an area), each leaf carrying events/hosts/confirmed-bookings counts.
+   PLACEHOLDER DATA: real cities today only carry a flat city string (see admin_review.html's
+   inScope()) — this page's drill-down assumes a country/state/area/landmark breakdown that
+   doesn't exist in the event schema yet. Wiring this to Firestore means either adding
+   state/country/area/landmark to events (and backfilling), or deriving it from the host's own
+   city/state/country (adminListUsers / host profile), whichever the team decides first.
 
    Only India and USA are live markets right now, so that's all this tree lists — add a country
    here once Sangha actually launches in it. A node is a leaf (its own events/hosts/bookings) or
-   a branch (a "children" array of the same shape, one level down); a city can itself branch into
-   areas/neighborhoods, as shown here for Austin, once there's real sub-city data to show.
+   a branch (a "children" array of the same shape, one level down); a city can branch into
+   areas/neighborhoods, and an area can branch again into landmarks, as shown here for Austin ->
+   Downtown, once there's real sub-city data to show.
 --------------------------------------------------------------------------------------------- */
 const GEO = [
   { name: 'India', children: [
@@ -183,7 +187,11 @@ const GEO = [
   { name: 'USA', children: [
     { name: 'Texas', children: [
       { name: 'Austin', children: [
-        { name: 'Downtown', events: 12, hosts: 1, bookings: 66 },
+        { name: 'Downtown', children: [
+          { name: 'Zilker Park', events: 5, hosts: 1, bookings: 28 },
+          { name: 'Lady Bird Lake Trail', events: 4, hosts: 0, bookings: 22 },
+          { name: 'Rainey Street', events: 3, hosts: 0, bookings: 16 },
+        ]},
         { name: 'South Austin', events: 9, hosts: 1, bookings: 48 },
         { name: 'East Austin', events: 8, hosts: 1, bookings: 42 },
         { name: 'North Austin', events: 6, hosts: 1, bookings: 34 },
@@ -207,6 +215,13 @@ function nodesAtPath(path){
   for(const name of path) nodes = nodes.find(n => n.name === name).children;
   return nodes;
 }
+// How many nodes sit at a given depth below the root (0 = countries, 1 = states/regions,
+// 2 = cities, 3 = landmarks/areas within a city) — a branch that ends before that depth
+// (most cities have no sub-areas yet) just contributes nothing past its own leaf.
+function countAtDepth(nodes, targetDepth, depth = 0){
+  if(depth === targetDepth) return nodes.length;
+  return nodes.reduce((n, node) => n + (node.children ? countAtDepth(node.children, targetDepth, depth + 1) : 0), 0);
+}
 
 /* ---------------------------- shared page state ---------------------------- */
 let tab = 'overview';
@@ -215,13 +230,22 @@ let geoPath = [];
 /* ---------------------------- Overview ---------------------------- */
 function renderOverview(){
   const grand = rollUp({ children: GEO });
+  const geoCounts = {
+    states: countAtDepth(GEO, 1),
+    cities: countAtDepth(GEO, 2),
+    areas: countAtDepth(GEO, 3),
+    landmarks: countAtDepth(GEO, 4),
+  };
 
   const tiles = [
     { label: 'Total users', value: '1,247', sub: '+38 this week', subClass: 'up' },
     { label: 'Hosts', value: String(grand.hosts), sub: '+4 this week', subClass: 'up' },
     { label: 'Events', value: String(grand.events), sub: '+19 this week', subClass: 'up' },
     { label: 'Pending review', value: '12', sub: 'waiting on a decision', subClass: '' },
-    { label: 'Countries covered', value: String(GEO.length), sub: GEO.reduce((n, c) => n + c.children.length, 0) + ' states/regions', subClass: '' },
+    { label: 'Countries covered', value: String(GEO.length), breakdown: [
+      ['States/regions', geoCounts.states], ['Countries', GEO.length], ['Cities', geoCounts.cities],
+      ['Areas', geoCounts.areas], ['Landmarks', geoCounts.landmarks],
+    ] },
     { label: 'Confirmed bookings', value: grand.bookings.toLocaleString(), sub: '+124 this week', subClass: 'up' },
   ];
 
@@ -239,7 +263,10 @@ function renderOverview(){
         <div class="tile">
           <div class="tile-label">${esc(t.label)}</div>
           <div class="tile-value">${esc(t.value)}</div>
-          <div class="tile-sub ${t.subClass}">${esc(t.sub)}</div>
+          ${t.breakdown ? `
+            <div class="tile-breakdown">
+              ${t.breakdown.map(([k, v]) => `<div><span>${esc(v)}</span>${esc(k)}</div>`).join('')}
+            </div>` : `<div class="tile-sub ${t.subClass}">${esc(t.sub)}</div>`}
         </div>`).join('')}
     </div>
     <div class="section">
@@ -257,8 +284,8 @@ function renderOverview(){
 }
 
 /* ---------------------------- Geography ---------------------------- */
-const GEO_LEVEL_WORD = ['country', 'state/region', 'city', 'area'];
-const GEO_LEVEL_WORD_PL = ['countries', 'states/regions', 'cities', 'areas'];
+const GEO_LEVEL_WORD = ['country', 'state/region', 'city', 'area', 'landmark'];
+const GEO_LEVEL_WORD_PL = ['countries', 'states/regions', 'cities', 'areas', 'landmarks'];
 function geoWord(n, depth){ return n === 1 ? GEO_LEVEL_WORD[depth] : GEO_LEVEL_WORD_PL[depth]; }
 
 function renderGeo(){
@@ -270,7 +297,8 @@ function renderGeo(){
   const geoTitle = depth === 0 ? 'Countries'
     : depth === 1 ? 'States & regions in ' + geoPath[0]
     : depth === 2 ? 'Cities in ' + geoPath[1] + ', ' + geoPath[0]
-    : 'Areas in ' + geoPath[2] + ', ' + geoPath[1];
+    : depth === 3 ? 'Areas in ' + geoPath[2] + ', ' + geoPath[1]
+    : 'Landmarks in ' + geoPath[3] + ', ' + geoPath[2];
   const geoNote = list.length + ' ' + geoWord(list.length, depth);
 
   list.sort((a, b) => b.events - a.events);
