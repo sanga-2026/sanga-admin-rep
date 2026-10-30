@@ -14,8 +14,12 @@
   a{color:inherit;}
   .wrap{max-width:900px;margin:0 auto;padding:20px 20px 80px;}
 
-  .back-btn{position:fixed;top:16px;left:16px;z-index:999;width:36px;height:36px;border-radius:50%;background:var(--forest);color:var(--rust);border:none;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.18);}
-  .back-btn:hover{opacity:.85;}
+  .topnav{background:var(--forest);display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:7px 8px;border-radius:14px;margin-bottom:16px;}
+  .topnav .back-btn{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px;}
+  .topnav .back-btn:hover{background:rgba(255,255,255,.22);}
+  .topnav .navbtn{color:#fff;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:999px;border:none;background:transparent;text-decoration:none;white-space:nowrap;font-family:inherit;cursor:pointer;}
+  .topnav .navbtn:hover{background:rgba(255,255,255,.14);}
+  .topnav .navbtn.current{background:var(--rust);color:#fff;}
 
   .userbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:10px;}
   .userbar .who{text-align:right;line-height:1.25;}
@@ -24,9 +28,6 @@
   .dp{width:42px;height:42px;border-radius:50%;background:var(--forest);color:var(--rust);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;overflow:hidden;flex-shrink:0;border:2px solid var(--sage);}
   .dp img{width:100%;height:100%;object-fit:cover;display:block;}
 
-  .navrow{display:flex;gap:8px;flex-wrap:wrap;margin-right:auto;}
-  .nav-link{font-size:13px;font-weight:700;padding:9px 14px;border-radius:10px;border:1px solid var(--forest);display:inline-block;text-decoration:none;}
-  .nav-link:hover{background:var(--forest);color:#fff;}
   .blocked{background:#fdecea;border:1px solid #e5b4ac;border-radius:16px;padding:32px 24px;text-align:center;}
 
   .title{font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;margin-bottom:18px;}
@@ -106,16 +107,17 @@
 </head>
 <body>
 <div class="wrap">
-  <button type="button" class="back-btn" onclick="history.back()" aria-label="Back">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-  </button>
+  <div class="topnav">
+    <button type="button" class="back-btn" onclick="history.back()" aria-label="Back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <a class="navbtn" href="admin_review.html">Review Queue</a>
+    <a class="navbtn" href="admin_settings.html">Admin Settings</a>
+    <a class="navbtn current" href="admin_analytics.html">Analytics</a>
+  </div>
 
   <!-- Who is logged in. Filled in by renderUserChip() from getCurrentAdmin(). -->
   <div class="userbar">
-    <div class="navrow">
-      <a class="nav-link" href="admin_review.html">Review queue</a>
-      <a class="nav-link" href="admin_settings.html">Admin settings</a>
-    </div>
     <div class="who"><div class="who-name" id="userName"></div><div class="who-role" id="userRole"></div></div>
     <div class="dp" id="userDp"></div>
   </div>
