@@ -319,9 +319,12 @@ function mondayOf(d){
 function shortDate(d){ return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 
 function renderBookings(){
+  // The app's own fixed event categories (see EVENT_CATEGORIES in event_prototypes.html) —
+  // every event is created under one of these, so there's no "everything else" catch-all.
   const categoryRaw = [
-    { label: 'Yoga', value: 410 }, { label: 'Refresh & Reset', value: 320 }, { label: 'Walk & connect', value: 260 },
-    { label: 'Kids programs', value: 240 }, { label: 'Group events', value: 210 }, { label: 'Everything else', value: 172 },
+    { label: 'Yoga', value: 310 }, { label: 'Hiking', value: 260 }, { label: 'Walk & connect', value: 230 },
+    { label: 'Refresh & Reset', value: 210 }, { label: 'Rooted in nature', value: 180 }, { label: 'Music', value: 150 },
+    { label: 'Sports', value: 120 }, { label: 'Gardening', value: 90 }, { label: 'Sustainability', value: 62 },
   ];
   const catMax = Math.max(...categoryRaw.map(c => c.value));
   const catTotal = categoryRaw.reduce((a, c) => a + c.value, 0);
