@@ -78,10 +78,31 @@
   .pill-trend{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:#eef7ee;color:#2e7d32;}
   .hero-stats{display:flex;gap:88px;margin-top:18px;flex-wrap:wrap;}
 
-  .week-chart{display:flex;align-items:flex-end;gap:10px;height:140px;padding-top:8px;}
-  .week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;position:relative;}
+  .week-chart{display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:8px;}
+  .week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;position:relative;}
+  .week-value{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;}
   .week-bar{width:100%;max-width:34px;border-radius:5px 5px 0 0;background:var(--rust);min-height:3px;}
-  .week-label{font-size:11px;opacity:.55;}
+  .week-col.current .week-bar{background:var(--ink);}
+  .week-col.current .week-value{color:var(--ink);}
+  .week-label{font-size:11px;opacity:.55;text-align:center;}
+  .week-col.current .week-label{opacity:1;font-weight:700;}
+
+  .seg-bar{display:flex;width:100%;height:28px;border-radius:8px;overflow:hidden;}
+  .seg-bar > div{height:100%;}
+  .seg-legend{display:flex;gap:22px;flex-wrap:wrap;margin-top:16px;}
+  .seg-item{display:flex;align-items:center;gap:9px;}
+  .seg-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+  .seg-item-name{font-size:13px;font-weight:700;}
+  .seg-item-stat{font-size:12px;opacity:.6;}
+
+  .rank-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+  @media (max-width:560px){ .rank-grid{grid-template-columns:1fr;} }
+  .rank-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .rank-num{font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;width:22px;height:22px;border-radius:50%;background:var(--sage);color:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .rank-body{flex:1;min-width:0;}
+  .rank-name{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rank-count{font-size:12px;opacity:.6;}
+  .rank-pct{font-family:'Poppins',sans-serif;font-size:20px;font-weight:700;flex-shrink:0;}
 </style>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#000000">
@@ -123,13 +144,13 @@
 
     <div class="main-tabs">
       <button class="main-tab on" data-tab="overview" type="button">Overview</button>
-      <button class="main-tab" data-tab="geo" type="button">Geography</button>
       <button class="main-tab" data-tab="bookings" type="button">Bookings</button>
+      <button class="main-tab" data-tab="geo" type="button">Geography</button>
     </div>
 
     <div id="panel-overview"></div>
-    <div id="panel-geo" style="display:none;"></div>
     <div id="panel-bookings" style="display:none;"></div>
+    <div id="panel-geo" style="display:none;"></div>
   </div>
 </div>
 
@@ -294,21 +315,39 @@ function renderGeo(){
 }
 
 /* ---------------------------- Bookings ---------------------------- */
+function mondayOf(d){
+  const date = new Date(d);
+  const day = date.getDay();
+  date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+function shortDate(d){ return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+
 function renderBookings(){
   const categoryRaw = [
-    { label: 'Yoga', value: 410 }, { label: 'Refresh & Reset', value: 320 }, { label: 'Walk & connect', value: 260 },
-    { label: 'Kids programs', value: 240 }, { label: 'Group events', value: 210 }, { label: 'Everything else', value: 172 },
+    { label: 'Yoga', value: 410, color: '#F2A94E' }, { label: 'Refresh & Reset', value: 320, color: '#2e7d32' },
+    { label: 'Walk & connect', value: 260, color: '#2d6fa3' }, { label: 'Kids programs', value: 240, color: '#8e5cc9' },
+    { label: 'Group events', value: 210, color: '#c0392b' }, { label: 'Everything else', value: 172, color: '#9a9a9a' },
   ];
-  const catMax = Math.max(...categoryRaw.map(c => c.value));
   const catTotal = categoryRaw.reduce((a, c) => a + c.value, 0);
 
-  const audienceRaw = [{ label: 'Everyone', value: 980 }, { label: 'Kids', value: 370 }, { label: 'Group', value: 262 }];
-  const audMax = Math.max(...audienceRaw.map(a => a.value));
+  const audienceRaw = [
+    { label: 'Everyone', value: 980, color: '#0D0D0D' },
+    { label: 'Kids', value: 370, color: '#F2A94E' },
+    { label: 'Group', value: 262, color: '#FBE3B8' },
+  ];
   const audTotal = audienceRaw.reduce((a, c) => a + c.value, 0);
 
   const weekRaw = [142, 158, 149, 171, 188, 176, 201, 212];
   const weekMax = Math.max(...weekRaw);
   const weekTotal = weekRaw.reduce((a, v) => a + v, 0);
+  const thisMonday = mondayOf(new Date());
+  const weekStarts = weekRaw.map((v, i) => {
+    const d = new Date(thisMonday);
+    d.setDate(d.getDate() - (weekRaw.length - 1 - i) * 7);
+    return d;
+  });
 
   document.getElementById('panel-bookings').innerHTML = `
     <div class="panel" style="margin-bottom:28px;">
@@ -328,10 +367,10 @@ function renderBookings(){
       <div class="panel">
         <div class="week-chart">
           ${weekRaw.map((v, i) => `
-            <div class="week-col">
-              <div class="bar-tip" style="bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);">${v} confirmed</div>
+            <div class="week-col ${i === weekRaw.length - 1 ? 'current' : ''}">
+              <div class="week-value">${v}</div>
               <div class="week-bar" style="height:${Math.max(6, Math.round(v / weekMax * 110))}px;"></div>
-              <div class="week-label">W${i + 1}</div>
+              <div class="week-label">${i === weekRaw.length - 1 ? 'This week' : shortDate(weekStarts[i])}</div>
             </div>`).join('')}
         </div>
       </div>
@@ -340,25 +379,31 @@ function renderBookings(){
     <div class="section">
       <div class="section-head"><div class="section-title">Confirmed bookings by audience</div><div class="section-note">Everyone / Kids / Group</div></div>
       <div class="panel">
-        ${audienceRaw.map(a => `
-          <div class="bar-row">
-            <div class="bar-tip">${Math.round(a.value / audTotal * 100)}% of confirmed bookings</div>
-            <div class="bar-label">${esc(a.label)}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${pct(a.value, audMax)};"></div></div>
-            <div class="bar-value">${a.value.toLocaleString()}</div>
-          </div>`).join('')}
+        <div class="seg-bar">
+          ${audienceRaw.map(a => `<div style="width:${Math.round(a.value / audTotal * 100)}%;background:${a.color};"></div>`).join('')}
+        </div>
+        <div class="seg-legend">
+          ${audienceRaw.map(a => `
+            <div class="seg-item">
+              <span class="seg-dot" style="background:${a.color};border:1px solid var(--line);"></span>
+              <span class="seg-item-name">${esc(a.label)}</span>
+              <span class="seg-item-stat">${a.value.toLocaleString()} · ${Math.round(a.value / audTotal * 100)}%</span>
+            </div>`).join('')}
+        </div>
       </div>
     </div>
 
     <div class="section">
       <div class="section-head"><div class="section-title">Confirmed bookings by category</div><div class="section-note">All time</div></div>
-      <div class="panel">
-        ${categoryRaw.map(c => `
-          <div class="bar-row">
-            <div class="bar-tip">${Math.round(c.value / catTotal * 100)}% of confirmed bookings</div>
-            <div class="bar-label">${esc(c.label)}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${pct(c.value, catMax)};"></div></div>
-            <div class="bar-value">${c.value.toLocaleString()}</div>
+      <div class="rank-grid">
+        ${categoryRaw.map((c, i) => `
+          <div class="rank-card">
+            <div class="rank-num">${i + 1}</div>
+            <div class="rank-body">
+              <div class="rank-name">${esc(c.label)}</div>
+              <div class="rank-count">${c.value.toLocaleString()} confirmed</div>
+            </div>
+            <div class="rank-pct" style="color:${c.color};">${Math.round(c.value / catTotal * 100)}%</div>
           </div>`).join('')}
       </div>
     </div>`;
@@ -375,6 +420,8 @@ function render(){
   else renderBookings();
 }
 document.querySelectorAll('.main-tab').forEach(b => b.onclick = () => { tab = b.dataset.tab; if(tab !== 'geo') geoPath = []; render(); });
+
+function getCurrentAdmin(){ return (window.SanghaAdmin && SanghaAdmin.admin) || { role:'admin', userId:'', name:'', roleLabel:'', avatar:'', scope:null }; }
 
 function renderUserChip(){
   const u = getCurrentAdmin();
@@ -396,6 +443,14 @@ function renderAll(){
 }
 
 SanghaAdmin.ready.then(ok => { if(!ok) return; renderAll(); });
+
+// Covers coming back to this page via the browser's back/forward cache (e.g. the back button in
+// .topnav): on some browsers a bfcache restore fires 'pageshow' without re-running the ready
+// chain above, which could otherwise leave a stale or blank panel showing.
+window.addEventListener('pageshow', (e) => {
+  if(!e.persisted) return;
+  try{ if(getCurrentAdmin().role === 'main') render(); }catch(err){ /* not signed in: nothing to re-render */ }
+});
 </script>
 </body>
 </html>
