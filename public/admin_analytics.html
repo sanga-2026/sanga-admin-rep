@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Analytics — Sangha (prototype)</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#FFFFFF; --card:#FFFDF8; --forest:#000; --rust:#F2A94E; --sage:#FBE3B8; --ink:#0D0D0D; --line:#E4E4E4; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Lato',sans-serif;-webkit-font-smoothing:antialiased;}
+  button,select,input{font-family:inherit;}
+  button{cursor:pointer;}
+  a{color:inherit;}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 20px 80px;}
+
+  .back-btn{width:36px;height:36px;border-radius:50%;background:var(--forest);color:var(--rust);border:none;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;}
+  .back-btn:hover{opacity:.85;}
+
+  .userbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:10px;}
+  .userbar .who{text-align:right;line-height:1.25;}
+  .userbar .who-name{font-weight:700;font-size:13.5px;}
+  .userbar .who-role{font-size:11.5px;opacity:.6;}
+  .dp{width:42px;height:42px;border-radius:50%;background:var(--forest);color:var(--rust);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;overflow:hidden;flex-shrink:0;border:2px solid var(--sage);}
+  .dp img{width:100%;height:100%;object-fit:cover;display:block;}
+
+  .navrow{display:flex;gap:8px;flex-wrap:wrap;margin-right:auto;}
+  .nav-link{font-size:13px;font-weight:700;padding:9px 14px;border-radius:10px;border:1px solid var(--forest);display:inline-block;text-decoration:none;}
+  .nav-link:hover{background:var(--forest);color:#fff;}
+  .blocked{background:#fdecea;border:1px solid #e5b4ac;border-radius:16px;padding:32px 24px;text-align:center;}
+
+  .title{font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;margin-bottom:18px;}
+
+  .filterbar{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:22px;}
+  .filter-presets{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;color:var(--ink);}
+  .chip:hover{border-color:var(--rust);}
+  .chip.on{background:var(--ink);border-color:var(--ink);color:var(--rust);}
+  .filter-custom{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
+  .filter-custom label{display:flex;flex-direction:column;gap:5px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.6;}
+  .filter-custom input[type="date"]{font-family:inherit;font-size:13.5px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;}
+  .filter-asof{font-size:12px;opacity:.55;margin-top:12px;}
+
+  .main-tabs{display:flex;gap:8px;margin-bottom:22px;border-bottom:1px solid var(--line);}
+  .main-tab{padding:11px 4px;margin-right:18px;border:none;background:none;font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;opacity:.5;border-bottom:3px solid transparent;border-radius:0;}
+  .main-tab.on{opacity:1;border-bottom-color:var(--rust);}
+
+  .tile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:8px;}
+  @media (max-width:760px){ .tile-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  @media (max-width:480px){ .tile-grid{grid-template-columns:1fr;} }
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 20px 18px;}
+  .tile-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;font-weight:700;margin-bottom:8px;}
+  .tile-value{font-family:'Poppins',sans-serif;font-size:30px;font-weight:700;line-height:1.1;}
+  .tile-sub{font-size:12px;opacity:.6;margin-top:6px;}
+  .tile-sub.up{color:#2e7d32;opacity:1;}
+
+  .section{margin-top:32px;}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+  .section-title{font-family:'Poppins',sans-serif;font-size:16.5px;font-weight:700;}
+  .section-note{font-size:12.5px;opacity:.55;}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;}
+
+  .bar-row{display:flex;align-items:center;gap:14px;padding:9px 0;position:relative;}
+  .bar-row + .bar-row{border-top:1px solid var(--line);}
+  .bar-label{width:160px;flex-shrink:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bar-track{flex:1;background:#F3F1EA;border-radius:6px;height:16px;position:relative;overflow:visible;}
+  .bar-fill{height:100%;border-radius:6px;background:var(--rust);}
+  .bar-value{width:56px;flex-shrink:0;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .bar-tip{position:absolute;bottom:calc(100% + 8px);left:0;background:var(--ink);color:#fff;font-size:11.5px;padding:6px 9px;border-radius:7px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s;z-index:2;}
+  .bar-row:hover .bar-tip{opacity:1;}
+  .bar-row.drill{cursor:pointer;margin:0 -10px;padding:9px 10px;border-radius:9px;}
+  .bar-row.drill:hover{background:#F3F1EA;}
+  .bar-row.drill:hover .bar-fill{background:var(--ink);}
+  .chevron{opacity:.35;flex-shrink:0;}
+  .chevron.hide{visibility:hidden;}
+
+  .crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+  .crumb{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;color:var(--ink);}
+  .crumb.on{background:var(--ink);border-color:var(--ink);color:var(--rust);}
+  .crumb:not(.on):hover{border-color:var(--rust);}
+  .scope-line{font-size:12.5px;opacity:.6;margin:2px 0 16px;}
+
+  .hero{display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap;margin-bottom:8px;}
+  .hero-num{font-family:'Poppins',sans-serif;font-size:46px;font-weight:700;line-height:1;}
+  .hero-label{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;font-weight:700;margin-bottom:8px;}
+  .pill-trend{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:#eef7ee;color:#2e7d32;}
+  .hero-stats{display:flex;gap:56px;margin-top:18px;flex-wrap:wrap;}
+
+  .week-chart{display:flex;align-items:flex-end;gap:10px;height:140px;padding-top:8px;}
+  .week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;position:relative;}
+  .week-bar{width:100%;max-width:34px;border-radius:5px 5px 0 0;background:var(--rust);min-height:3px;}
+  .week-label{font-size:11px;opacity:.55;}
+</style>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sanga Admin">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+<script src="/js/sanga-pwa.js" defer></script>
+<style>html.sg-locked body{visibility:hidden}</style>
+<script>document.documentElement.classList.add("sg-locked")</script>
+</head>
+<body>
+<div class="wrap">
+  <button type="button" class="back-btn" onclick="history.back()" aria-label="Back">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+  </button>
+
+  <!-- Who is logged in. Filled in by renderUserChip() from getCurrentAdmin(). -->
+  <div class="userbar">
+    <div class="navrow">
+      <a class="nav-link" href="admin_review.html">Review queue</a>
+      <a class="nav-link" href="admin_settings.html">Admin settings</a>
+    </div>
+    <div class="who"><div class="who-name" id="userName"></div><div class="who-role" id="userRole"></div></div>
+    <div class="dp" id="userDp"></div>
+  </div>
+
+  <div id="blocked" class="blocked" style="display:none;">
+    <h2>This page is for the main admin only</h2>
+    <p>You're an admin, so you can review events, but you can't see site-wide analytics.</p>
+    <a class="nav-link" href="admin_review.html">Go to Review Queue →</a>
+  </div>
+
+  <div id="mainContent">
+    <div class="title">Analytics</div>
+
+    <div class="filterbar">
+      <div class="filter-presets" id="rangePresets"></div>
+      <div class="filter-custom" id="customRangeBox" style="display:none;">
+        <label>From <input type="date" id="fromDate"></label>
+        <label>To <input type="date" id="toDate"></label>
+      </div>
+      <div class="filter-asof" id="asOfLine"></div>
+    </div>
+
+    <div class="main-tabs">
+      <button class="main-tab on" data-tab="overview" type="button">Overview</button>
+      <button class="main-tab" data-tab="geo" type="button">Geography</button>
+      <button class="main-tab" data-tab="bookings" type="button">Bookings</button>
+    </div>
+
+    <div id="panel-overview"></div>
+    <div id="panel-geo" style="display:none;"></div>
+    <div id="panel-bookings" style="display:none;"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/sanga-auth.js"></script>
+<script src="/js/admin-session.js"></script>
+<script>
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function pct(value, max){ return Math.max(0, Math.min(100, Math.round((value / max) * 100))) + '%'; }
+
+/* ---------------------------------------------------------------------------------------------
+   Sample geography tree (country -> state/region -> city), each city carrying events/hosts/
+   confirmed-bookings counts. PLACEHOLDER DATA: real cities today only carry a flat city string
+   (see admin_review.html's inScope()) — this page's drill-down assumes a country/state breakdown
+   that doesn't exist in the event schema yet. Wiring this to Firestore means either adding
+   state/country to events (and backfilling), or deriving it from the host's own city/state/
+   country (adminListUsers / host profile), whichever the team decides first.
+--------------------------------------------------------------------------------------------- */
+const GEO = [
+  { name: 'India', states: [
+    { name: 'Uttarakhand', cities: [{ name: 'Rishikesh', events: 42, hosts: 3, bookings: 210 }] },
+    { name: 'Karnataka', cities: [{ name: 'Bengaluru', events: 28, hosts: 2, bookings: 150 }] },
+    { name: 'Maharashtra', cities: [{ name: 'Mumbai', events: 14, hosts: 1, bookings: 70 }] },
+    { name: 'Tamil Nadu', cities: [{ name: 'Chennai', events: 9, hosts: 1, bookings: 45 }] },
+  ]},
+  { name: 'USA', states: [
+    { name: 'Texas', cities: [{ name: 'Austin', events: 35, hosts: 2, bookings: 190 }] },
+    { name: 'Colorado', cities: [{ name: 'Denver', events: 30, hosts: 2, bookings: 160 }] },
+    { name: 'California', cities: [{ name: 'San Francisco', events: 26, hosts: 2, bookings: 140 }] },
+    { name: 'Oregon', cities: [{ name: 'Portland', events: 9, hosts: 1, bookings: 45 }] },
+    { name: 'Georgia', cities: [{ name: 'Atlanta', events: 7, hosts: 1, bookings: 35 }] },
+    { name: 'Washington', cities: [{ name: 'Seattle', events: 5, hosts: 1, bookings: 25 }] },
+  ]},
+  { name: 'United Kingdom', states: [
+    { name: 'England', cities: [{ name: 'London', events: 33, hosts: 2, bookings: 175 }] },
+  ]},
+  { name: 'Germany', states: [
+    { name: 'Berlin', cities: [{ name: 'Berlin', events: 22, hosts: 1, bookings: 110 }] },
+    { name: 'Hamburg', cities: [{ name: 'Hamburg', events: 8, hosts: 1, bookings: 40 }] },
+  ]},
+  { name: 'Ghana', states: [
+    { name: 'Greater Accra', cities: [{ name: 'Accra', events: 19, hosts: 1, bookings: 95 }] },
+    { name: 'Ashanti', cities: [{ name: 'Kumasi', events: 6, hosts: 1, bookings: 30 }] },
+  ]},
+  { name: 'Italy', states: [{ name: 'Lazio', cities: [{ name: 'Rome', events: 7, hosts: 1, bookings: 35 }] }] },
+  { name: 'Sweden', states: [{ name: 'Stockholm', cities: [{ name: 'Stockholm', events: 6, hosts: 1, bookings: 30 }] }] },
+  { name: 'Japan', states: [{ name: 'Kyoto', cities: [{ name: 'Kyoto', events: 8, hosts: 1, bookings: 40 }] }] },
+  { name: 'France', states: [{ name: 'Auvergne-Rhone-Alpes', cities: [{ name: 'Lyon', events: 6, hosts: 1, bookings: 30 }] }] },
+  { name: 'Portugal', states: [{ name: 'Lisbon', cities: [{ name: 'Lisbon', events: 5, hosts: 1, bookings: 25 }] }] },
+];
+
+function addTotals(a, b){ return { events: a.events + b.events, hosts: a.hosts + b.hosts, bookings: a.bookings + b.bookings }; }
+function rollUp(node){
+  if(node.cities) return node.cities.reduce((a, c) => addTotals(a, c), { events: 0, hosts: 0, bookings: 0 });
+  if(node.states) return node.states.reduce((a, s) => addTotals(a, rollUp(s)), { events: 0, hosts: 0, bookings: 0 });
+  return { events: node.events, hosts: node.hosts, bookings: node.bookings };
+}
+
+/* ---------------------------- shared page state ---------------------------- */
+let tab = 'overview';
+let geoPath = [];
+let range = 'last30';
+let customFrom = '2026-10-01', customTo = '2026-10-30';
+
+const RANGE_LABELS = {
+  last7: 'last 7 days', last30: 'last 30 days', last90: 'last 90 days',
+  all: 'all time (since launch)', custom: 'a custom range',
+};
+function rangeLabel(){
+  if(range === 'custom') return (customFrom && customTo) ? customFrom + ' to ' + customTo : 'a custom range';
+  return RANGE_LABELS[range];
+}
+function rangeLabelCap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/* ---------------------------- filter bar ---------------------------- */
+function renderFilterBar(){
+  const presets = [
+    { key: 'last7', label: 'Last 7 days' },
+    { key: 'last30', label: 'Last 30 days' },
+    { key: 'last90', label: 'Last 90 days' },
+    { key: 'all', label: 'Since launch' },
+    { key: 'custom', label: 'Custom range' },
+  ];
+  document.getElementById('rangePresets').innerHTML = presets.map(p =>
+    `<button type="button" class="chip ${range === p.key ? 'on' : ''}" data-range="${p.key}">${esc(p.label)}</button>`
+  ).join('');
+  document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { range = b.dataset.range; renderFilterBar(); render(); });
+
+  document.getElementById('customRangeBox').style.display = range === 'custom' ? '' : 'none';
+  document.getElementById('fromDate').value = customFrom;
+  document.getElementById('toDate').value = customTo;
+  document.getElementById('fromDate').onchange = (e) => { customFrom = e.target.value; renderFilterBar(); render(); };
+  document.getElementById('toDate').onchange = (e) => { customTo = e.target.value; renderFilterBar(); render(); };
+
+  document.getElementById('asOfLine').textContent = 'Showing ' + rangeLabel() + ' · as of Oct 30, 2026';
+}
+
+/* ---------------------------- Overview ---------------------------- */
+function renderOverview(){
+  const grand = rollUp({ states: GEO.flatMap(c => c.states) });
+  const cityCount = GEO.reduce((n, c) => n + c.states.reduce((m, s) => m + s.cities.length, 0), 0);
+
+  const tiles = [
+    { label: 'Total users', value: '1,247', sub: '+38 this week', subClass: 'up' },
+    { label: 'Hosts', value: String(grand.hosts), sub: 'across ' + cityCount + ' cities', subClass: '' },
+    { label: 'Events', value: String(grand.events), sub: '270 upcoming, 30 past', subClass: '' },
+    { label: 'Pending review', value: '12', sub: 'waiting on a decision', subClass: '' },
+    { label: 'Countries covered', value: String(GEO.length), sub: GEO.reduce((n, c) => n + c.states.length, 0) + ' states/regions', subClass: '' },
+    { label: 'Confirmed bookings', value: grand.bookings.toLocaleString(), sub: '124 new in ' + rangeLabel(), subClass: 'up' },
+  ];
+
+  const statusRaw = [
+    { label: 'Published', value: 251, color: '#2e7d32' },
+    { label: 'Pending review', value: 12, color: '#F2A94E' },
+    { label: 'Rejected', value: 7, color: '#c0392b' },
+  ];
+  const statusMax = Math.max(...statusRaw.map(s => s.value));
+  const statusTotal = statusRaw.reduce((a, s) => a + s.value, 0);
+
+  document.getElementById('panel-overview').innerHTML = `
+    <div class="tile-grid">
+      ${tiles.map(t => `
+        <div class="tile">
+          <div class="tile-label">${esc(t.label)}</div>
+          <div class="tile-value">${esc(t.value)}</div>
+          <div class="tile-sub ${t.subClass}">${esc(t.sub)}</div>
+        </div>`).join('')}
+    </div>
+    <div class="section">
+      <div class="section-head"><div class="section-title">Nnooq — current events status</div></div>
+      <div class="panel">
+        ${statusRaw.map(s => `
+          <div class="bar-row">
+            <div class="bar-tip">${s.value} events — ${Math.round(s.value / statusTotal * 100)}% of all events</div>
+            <div class="bar-label">${esc(s.label)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct(s.value, statusMax)};background:${s.color};"></div></div>
+            <div class="bar-value">${s.value}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+/* ---------------------------- Geography ---------------------------- */
+function renderGeo(){
+  let geoTitle = 'Countries', geoNote = GEO.length + ' countries', list = [], leaf = false;
+  if(geoPath.length === 0){
+    list = GEO.map(c => ({ name: c.name, ...rollUp(c), path: [c.name] }));
+  } else if(geoPath.length === 1){
+    const country = GEO.find(c => c.name === geoPath[0]);
+    geoTitle = 'States & regions in ' + geoPath[0];
+    geoNote = country.states.length + ' states/regions';
+    list = country.states.map(s => ({ name: s.name, ...rollUp(s), path: [geoPath[0], s.name] }));
+  } else {
+    const country = GEO.find(c => c.name === geoPath[0]);
+    const state = country.states.find(s => s.name === geoPath[1]);
+    geoTitle = 'Cities in ' + geoPath[1] + ', ' + geoPath[0];
+    geoNote = state.cities.length + ' ' + (state.cities.length === 1 ? 'city' : 'cities');
+    list = state.cities.map(c => ({ name: c.name, events: c.events, hosts: c.hosts, bookings: c.bookings, path: null }));
+    leaf = true;
+  }
+  list.sort((a, b) => b.events - a.events);
+  const max = Math.max(...list.map(g => g.events), 1);
+  const totals = list.reduce((a, g) => addTotals(a, g), { events: 0, hosts: 0, bookings: 0 });
+  const scopeLine = list.length + (geoPath.length === 2 ? ' cities' : geoPath.length === 1 ? ' states/regions' : ' countries')
+    + ' shown · ' + totals.events + ' events · ' + totals.hosts + ' hosts · ' + totals.bookings.toLocaleString() + ' confirmed bookings';
+
+  const crumbs = [{ label: 'All countries', path: [] }];
+  geoPath.forEach((name, i) => crumbs.push({ label: name, path: geoPath.slice(0, i + 1) }));
+
+  document.getElementById('panel-geo').innerHTML = `
+    <div class="section" style="margin-top:0;">
+      <div class="crumbs" id="geoCrumbs">
+        ${crumbs.map((c, i) => `<button type="button" class="crumb ${i === crumbs.length - 1 ? 'on' : ''}" data-crumb="${i}">${esc(c.label)}</button>`).join('')}
+      </div>
+      <div class="section-head">
+        <div class="section-title">${esc(geoTitle)}</div>
+        <div class="section-note">${esc(geoNote)}</div>
+      </div>
+      <div class="scope-line">${esc(scopeLine)}</div>
+      <div class="panel">
+        ${list.map((g, i) => `
+          <div class="bar-row ${leaf ? '' : 'drill'}" ${leaf ? '' : `data-geo-row="${i}"`}>
+            <div class="bar-tip">${g.hosts} hosts, ${g.events} events, ${g.bookings.toLocaleString()} confirmed bookings</div>
+            <div class="bar-label">${esc(g.name)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct(g.events, max)};"></div></div>
+            <div class="bar-value">${g.events}</div>
+            <svg class="chevron ${leaf ? 'hide' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  document.querySelectorAll('[data-crumb]').forEach(b => b.onclick = () => { geoPath = crumbs[+b.dataset.crumb].path; renderGeo(); });
+  if(!leaf) document.querySelectorAll('[data-geo-row]').forEach(b => b.onclick = () => { geoPath = list[+b.dataset.geoRow].path; renderGeo(); });
+}
+
+/* ---------------------------- Bookings ---------------------------- */
+function renderBookings(){
+  const categoryRaw = [
+    { label: 'Yoga', value: 410 }, { label: 'Refresh & Reset', value: 320 }, { label: 'Walk & connect', value: 260 },
+    { label: 'Kids programs', value: 240 }, { label: 'Group events', value: 210 }, { label: 'Everything else', value: 172 },
+  ];
+  const catMax = Math.max(...categoryRaw.map(c => c.value));
+  const catTotal = categoryRaw.reduce((a, c) => a + c.value, 0);
+
+  const audienceRaw = [{ label: 'Everyone', value: 980 }, { label: 'Kids', value: 370 }, { label: 'Group', value: 262 }];
+  const audMax = Math.max(...audienceRaw.map(a => a.value));
+  const audTotal = audienceRaw.reduce((a, c) => a + c.value, 0);
+
+  const weekRaw = [142, 158, 149, 171, 188, 176, 201, 212];
+  const weekMax = Math.max(...weekRaw);
+  const weekTotal = weekRaw.reduce((a, v) => a + v, 0);
+
+  document.getElementById('panel-bookings').innerHTML = `
+    <div class="panel" style="margin-bottom:28px;">
+      <div class="hero">
+        <div><div class="hero-label">Confirmed bookings</div><div class="hero-num">1,612</div></div>
+        <span class="pill-trend">124 new in ${esc(rangeLabel())}</span>
+      </div>
+      <div class="hero-stats">
+        <div><div class="hero-label">Cancelled</div><div style="font-weight:700;font-size:16px;">58</div></div>
+        <div><div class="hero-label">Awaiting host approval</div><div style="font-weight:700;font-size:16px;">21</div></div>
+        <div><div class="hero-label">Instant-booked</div><div style="font-weight:700;font-size:16px;">1,340</div></div>
+      </div>
+      <div class="section-note" style="margin-top:14px;">Revenue (price × confirmed bookings) isn't shown yet — still settling how it should be calculated.</div>
+    </div>
+
+    <div class="section" style="margin-top:0;">
+      <div class="section-head"><div class="section-title">Confirmed bookings, last 8 weeks</div><div class="section-note">${weekTotal.toLocaleString()} confirmed this period</div></div>
+      <div class="panel">
+        <div class="week-chart">
+          ${weekRaw.map((v, i) => `
+            <div class="week-col">
+              <div class="bar-tip" style="bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);">${v} confirmed</div>
+              <div class="week-bar" style="height:${Math.max(6, Math.round(v / weekMax * 110))}px;"></div>
+              <div class="week-label">W${i + 1}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Confirmed bookings by audience</div><div class="section-note">Everyone / Kids / Group</div></div>
+      <div class="panel">
+        ${audienceRaw.map(a => `
+          <div class="bar-row">
+            <div class="bar-tip">${Math.round(a.value / audTotal * 100)}% of confirmed bookings</div>
+            <div class="bar-label">${esc(a.label)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct(a.value, audMax)};"></div></div>
+            <div class="bar-value">${a.value.toLocaleString()}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Confirmed bookings by category</div><div class="section-note">${esc(rangeLabelCap(rangeLabel()))}</div></div>
+      <div class="panel">
+        ${categoryRaw.map(c => `
+          <div class="bar-row">
+            <div class="bar-tip">${Math.round(c.value / catTotal * 100)}% of confirmed bookings</div>
+            <div class="bar-label">${esc(c.label)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct(c.value, catMax)};"></div></div>
+            <div class="bar-value">${c.value.toLocaleString()}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+/* ---------------------------- top-level render ---------------------------- */
+function render(){
+  document.getElementById('panel-overview').style.display = tab === 'overview' ? '' : 'none';
+  document.getElementById('panel-geo').style.display = tab === 'geo' ? '' : 'none';
+  document.getElementById('panel-bookings').style.display = tab === 'bookings' ? '' : 'none';
+  document.querySelectorAll('.main-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if(tab === 'overview') renderOverview();
+  else if(tab === 'geo') renderGeo();
+  else renderBookings();
+}
+document.querySelectorAll('.main-tab').forEach(b => b.onclick = () => { tab = b.dataset.tab; if(tab !== 'geo') geoPath = []; render(); });
+
+function renderUserChip(){
+  const u = getCurrentAdmin();
+  document.getElementById('userName').textContent = u.name;
+  document.getElementById('userRole').textContent = u.roleLabel;
+  const dp = document.getElementById('userDp');
+  dp.innerHTML = '';
+  if(u.avatar){ const img = document.createElement('img'); img.src = u.avatar; img.alt = u.name; dp.appendChild(img); }
+  else dp.textContent = u.name.split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function renderAll(){
+  renderUserChip();
+  const isMain = getCurrentAdmin().role === 'main';
+  document.getElementById('mainContent').style.display = isMain ? '' : 'none';
+  document.getElementById('blocked').style.display = isMain ? 'none' : '';
+  if(!isMain) return;
+  // render() (the tab content) goes first and on its own: it must never be skipped because
+  // something in the filter bar failed. Each piece is independent and wrapped so one breaking
+  // never blanks out the rest of the page.
+  try{ render(); }catch(e){ console.warn('Could not render tab content:', e); }
+  try{ renderFilterBar(); }catch(e){ console.warn('Could not render the filter bar:', e); }
+}
+
+SanghaAdmin.ready.then(ok => { if(!ok) return; renderAll(); });
+</script>
+</body>
+</html>
