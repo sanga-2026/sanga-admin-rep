@@ -1,7 +1,7 @@
 // Sanga Admin service worker: makes the site installable and keeps the basic screens working with
 // a weak or no connection. It never touches Firebase traffic (a different origin, left to the
 // browser), so admins always see live data once back online.
-const VERSION = 'sanga-admin-v1';
+const VERSION = 'sanga-admin-v2';
 const SHELL = ['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -32,8 +32,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // scripts and pictures: show the saved copy right away and refresh it in the background
-  if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/icons/')) {
+  // scripts: the newest copy when online — this site's own JS changes constantly during active
+  // development, and serving a stale cached copy while a fresh one quietly loads in the background
+  // (the old strategy) meant a deploy could take an extra reload or two to actually show up. Only
+  // fall back to the last-seen copy when offline.
+  if (url.pathname.startsWith('/js/')) {
+    event.respondWith(
+      fetch(req).then((res) => {
+        if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
+        return res;
+      }).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // icons: these barely ever change, so show the saved copy right away and refresh it in the background
+  if (url.pathname.startsWith('/icons/')) {
     event.respondWith(
       caches.match(req).then((hit) => {
         const fresh = fetch(req).then((res) => {

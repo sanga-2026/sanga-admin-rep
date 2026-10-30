@@ -12,10 +12,12 @@
   button,select,input{font-family:inherit;}
   button{cursor:pointer;}
   .wrap{max-width:780px;margin:0 auto;padding:20px 20px 80px;}
-  .back-btn{width:36px;height:36px;border-radius:50%;background:var(--forest);color:var(--rust);border:none;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;}
-  .back-btn:hover{opacity:.85;}
-  .nav-link{font-size:13px;font-weight:700;padding:9px 14px;border-radius:10px;border:1px solid var(--forest);display:inline-block;text-decoration:none;}
-  .nav-link:hover{background:var(--forest);color:#fff;}
+  .topnav{background:var(--forest);display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:7px 8px;border-radius:14px;margin-bottom:16px;}
+  .topnav .back-btn{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px;}
+  .topnav .back-btn:hover{background:rgba(255,255,255,.22);}
+  .topnav .navbtn{color:#fff;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:999px;border:none;background:transparent;text-decoration:none;white-space:nowrap;font-family:inherit;cursor:pointer;}
+  .topnav .navbtn:hover{background:rgba(255,255,255,.14);}
+  .topnav .navbtn.current{background:var(--rust);color:#fff;}
   .userbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:18px;}
   .userbar .who{text-align:right;line-height:1.25;}
   .userbar .who-name{font-weight:700;font-size:13.5px;}
@@ -128,12 +130,16 @@
 </head>
 <body>
 <div class="wrap">
-  <button type="button" class="back-btn" onclick="history.back()" aria-label="Back">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-  </button>
+  <div class="topnav">
+    <button type="button" class="back-btn" onclick="history.back()" aria-label="Back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <a class="navbtn current" href="admin_review.html">Review Queue</a>
+    <a class="navbtn" href="admin_settings.html" id="navAdminSettings" style="display:none;">Admin Settings</a>
+    <a class="navbtn" href="admin_analytics.html" id="navAnalytics" style="display:none;">Analytics</a>
+  </div>
   <!-- Who is logged in. Filled in by renderUserChip() from getCurrentAdmin(). -->
   <div class="userbar">
-    <a class="nav-link" href="admin_analytics.html" id="analyticsLink" style="display:none;margin-right:auto;">Analytics</a>
     <div class="who"><div class="who-name" id="userName"></div><div class="who-role" id="userRole"></div></div>
     <div class="dp" id="userDp"></div>
   </div>
@@ -758,7 +764,8 @@ function renderUserChip(){
   dp.innerHTML = '';
   if(u.avatar){ const img = document.createElement('img'); img.src = u.avatar; img.alt = u.name; dp.appendChild(img); }
   else dp.textContent = u.name.split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase();
-  document.getElementById('analyticsLink').style.display = u.role === 'main' ? '' : 'none';
+  document.getElementById('navAdminSettings').style.display = u.role === 'main' ? '' : 'none';
+  document.getElementById('navAnalytics').style.display = u.role === 'main' ? '' : 'none';
 }
 
 let mainTab = 'events';
