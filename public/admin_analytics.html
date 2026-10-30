@@ -160,51 +160,52 @@ function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&
 function pct(value, max){ return Math.max(0, Math.min(100, Math.round((value / max) * 100))) + '%'; }
 
 /* ---------------------------------------------------------------------------------------------
-   Sample geography tree (country -> state/region -> city), each city carrying events/hosts/
-   confirmed-bookings counts. PLACEHOLDER DATA: real cities today only carry a flat city string
-   (see admin_review.html's inScope()) — this page's drill-down assumes a country/state breakdown
-   that doesn't exist in the event schema yet. Wiring this to Firestore means either adding
-   state/country to events (and backfilling), or deriving it from the host's own city/state/
-   country (adminListUsers / host profile), whichever the team decides first.
+   Sample geography tree (country -> state/region -> city -> optional sub-areas within a city),
+   each leaf carrying events/hosts/confirmed-bookings counts. PLACEHOLDER DATA: real cities today
+   only carry a flat city string (see admin_review.html's inScope()) — this page's drill-down
+   assumes a country/state (and, for one city, neighborhood) breakdown that doesn't exist in the
+   event schema yet. Wiring this to Firestore means either adding state/country/area to events
+   (and backfilling), or deriving it from the host's own city/state/country (adminListUsers / host
+   profile), whichever the team decides first.
+
+   Only India and USA are live markets right now, so that's all this tree lists — add a country
+   here once Sangha actually launches in it. A node is a leaf (its own events/hosts/bookings) or
+   a branch (a "children" array of the same shape, one level down); a city can itself branch into
+   areas/neighborhoods, as shown here for Austin, once there's real sub-city data to show.
 --------------------------------------------------------------------------------------------- */
 const GEO = [
-  { name: 'India', states: [
-    { name: 'Uttarakhand', cities: [{ name: 'Rishikesh', events: 42, hosts: 3, bookings: 210 }] },
-    { name: 'Karnataka', cities: [{ name: 'Bengaluru', events: 28, hosts: 2, bookings: 150 }] },
-    { name: 'Maharashtra', cities: [{ name: 'Mumbai', events: 14, hosts: 1, bookings: 70 }] },
-    { name: 'Tamil Nadu', cities: [{ name: 'Chennai', events: 9, hosts: 1, bookings: 45 }] },
+  { name: 'India', children: [
+    { name: 'Uttarakhand', children: [{ name: 'Rishikesh', events: 42, hosts: 3, bookings: 210 }] },
+    { name: 'Karnataka', children: [{ name: 'Bengaluru', events: 28, hosts: 2, bookings: 150 }] },
+    { name: 'Maharashtra', children: [{ name: 'Mumbai', events: 14, hosts: 1, bookings: 70 }] },
+    { name: 'Tamil Nadu', children: [{ name: 'Chennai', events: 9, hosts: 1, bookings: 45 }] },
   ]},
-  { name: 'USA', states: [
-    { name: 'Texas', cities: [{ name: 'Austin', events: 35, hosts: 2, bookings: 190 }] },
-    { name: 'Colorado', cities: [{ name: 'Denver', events: 30, hosts: 2, bookings: 160 }] },
-    { name: 'California', cities: [{ name: 'San Francisco', events: 26, hosts: 2, bookings: 140 }] },
-    { name: 'Oregon', cities: [{ name: 'Portland', events: 9, hosts: 1, bookings: 45 }] },
-    { name: 'Georgia', cities: [{ name: 'Atlanta', events: 7, hosts: 1, bookings: 35 }] },
-    { name: 'Washington', cities: [{ name: 'Seattle', events: 5, hosts: 1, bookings: 25 }] },
+  { name: 'USA', children: [
+    { name: 'Texas', children: [
+      { name: 'Austin', children: [
+        { name: 'Downtown', events: 12, hosts: 1, bookings: 66 },
+        { name: 'South Austin', events: 9, hosts: 1, bookings: 48 },
+        { name: 'East Austin', events: 8, hosts: 1, bookings: 42 },
+        { name: 'North Austin', events: 6, hosts: 1, bookings: 34 },
+      ]},
+    ]},
+    { name: 'Colorado', children: [{ name: 'Denver', events: 30, hosts: 2, bookings: 160 }] },
+    { name: 'California', children: [{ name: 'San Francisco', events: 26, hosts: 2, bookings: 140 }] },
+    { name: 'Oregon', children: [{ name: 'Portland', events: 9, hosts: 1, bookings: 45 }] },
+    { name: 'Georgia', children: [{ name: 'Atlanta', events: 7, hosts: 1, bookings: 35 }] },
+    { name: 'Washington', children: [{ name: 'Seattle', events: 5, hosts: 1, bookings: 25 }] },
   ]},
-  { name: 'United Kingdom', states: [
-    { name: 'England', cities: [{ name: 'London', events: 33, hosts: 2, bookings: 175 }] },
-  ]},
-  { name: 'Germany', states: [
-    { name: 'Berlin', cities: [{ name: 'Berlin', events: 22, hosts: 1, bookings: 110 }] },
-    { name: 'Hamburg', cities: [{ name: 'Hamburg', events: 8, hosts: 1, bookings: 40 }] },
-  ]},
-  { name: 'Ghana', states: [
-    { name: 'Greater Accra', cities: [{ name: 'Accra', events: 19, hosts: 1, bookings: 95 }] },
-    { name: 'Ashanti', cities: [{ name: 'Kumasi', events: 6, hosts: 1, bookings: 30 }] },
-  ]},
-  { name: 'Italy', states: [{ name: 'Lazio', cities: [{ name: 'Rome', events: 7, hosts: 1, bookings: 35 }] }] },
-  { name: 'Sweden', states: [{ name: 'Stockholm', cities: [{ name: 'Stockholm', events: 6, hosts: 1, bookings: 30 }] }] },
-  { name: 'Japan', states: [{ name: 'Kyoto', cities: [{ name: 'Kyoto', events: 8, hosts: 1, bookings: 40 }] }] },
-  { name: 'France', states: [{ name: 'Auvergne-Rhone-Alpes', cities: [{ name: 'Lyon', events: 6, hosts: 1, bookings: 30 }] }] },
-  { name: 'Portugal', states: [{ name: 'Lisbon', cities: [{ name: 'Lisbon', events: 5, hosts: 1, bookings: 25 }] }] },
 ];
 
 function addTotals(a, b){ return { events: a.events + b.events, hosts: a.hosts + b.hosts, bookings: a.bookings + b.bookings }; }
 function rollUp(node){
-  if(node.cities) return node.cities.reduce((a, c) => addTotals(a, c), { events: 0, hosts: 0, bookings: 0 });
-  if(node.states) return node.states.reduce((a, s) => addTotals(a, rollUp(s)), { events: 0, hosts: 0, bookings: 0 });
+  if(node.children) return node.children.reduce((a, c) => addTotals(a, rollUp(c)), { events: 0, hosts: 0, bookings: 0 });
   return { events: node.events, hosts: node.hosts, bookings: node.bookings };
+}
+function nodesAtPath(path){
+  let nodes = GEO;
+  for(const name of path) nodes = nodes.find(n => n.name === name).children;
+  return nodes;
 }
 
 /* ---------------------------- shared page state ---------------------------- */
@@ -213,14 +214,14 @@ let geoPath = [];
 
 /* ---------------------------- Overview ---------------------------- */
 function renderOverview(){
-  const grand = rollUp({ states: GEO.flatMap(c => c.states) });
+  const grand = rollUp({ children: GEO });
 
   const tiles = [
     { label: 'Total users', value: '1,247', sub: '+38 this week', subClass: 'up' },
     { label: 'Hosts', value: String(grand.hosts), sub: '+4 this week', subClass: 'up' },
     { label: 'Events', value: String(grand.events), sub: '+19 this week', subClass: 'up' },
     { label: 'Pending review', value: '12', sub: 'waiting on a decision', subClass: '' },
-    { label: 'Countries covered', value: String(GEO.length), sub: GEO.reduce((n, c) => n + c.states.length, 0) + ' states/regions', subClass: '' },
+    { label: 'Countries covered', value: String(GEO.length), sub: GEO.reduce((n, c) => n + c.children.length, 0) + ' states/regions', subClass: '' },
     { label: 'Confirmed bookings', value: grand.bookings.toLocaleString(), sub: '+124 this week', subClass: 'up' },
   ];
 
@@ -256,27 +257,26 @@ function renderOverview(){
 }
 
 /* ---------------------------- Geography ---------------------------- */
+const GEO_LEVEL_WORD = ['country', 'state/region', 'city', 'area'];
+const GEO_LEVEL_WORD_PL = ['countries', 'states/regions', 'cities', 'areas'];
+function geoWord(n, depth){ return n === 1 ? GEO_LEVEL_WORD[depth] : GEO_LEVEL_WORD_PL[depth]; }
+
 function renderGeo(){
-  let geoTitle = 'Countries', geoNote = GEO.length + ' countries', list = [], leaf = false;
-  if(geoPath.length === 0){
-    list = GEO.map(c => ({ name: c.name, ...rollUp(c), path: [c.name] }));
-  } else if(geoPath.length === 1){
-    const country = GEO.find(c => c.name === geoPath[0]);
-    geoTitle = 'States & regions in ' + geoPath[0];
-    geoNote = country.states.length + ' states/regions';
-    list = country.states.map(s => ({ name: s.name, ...rollUp(s), path: [geoPath[0], s.name] }));
-  } else {
-    const country = GEO.find(c => c.name === geoPath[0]);
-    const state = country.states.find(s => s.name === geoPath[1]);
-    geoTitle = 'Cities in ' + geoPath[1] + ', ' + geoPath[0];
-    geoNote = state.cities.length + ' ' + (state.cities.length === 1 ? 'city' : 'cities');
-    list = state.cities.map(c => ({ name: c.name, events: c.events, hosts: c.hosts, bookings: c.bookings, path: null }));
-    leaf = true;
-  }
+  const depth = geoPath.length;
+  const nodes = nodesAtPath(geoPath);
+  const leaf = !nodes[0].children;
+  const list = nodes.map(n => ({ name: n.name, ...(n.children ? rollUp(n) : { events: n.events, hosts: n.hosts, bookings: n.bookings }), path: [...geoPath, n.name] }));
+
+  const geoTitle = depth === 0 ? 'Countries'
+    : depth === 1 ? 'States & regions in ' + geoPath[0]
+    : depth === 2 ? 'Cities in ' + geoPath[1] + ', ' + geoPath[0]
+    : 'Areas in ' + geoPath[2] + ', ' + geoPath[1];
+  const geoNote = list.length + ' ' + geoWord(list.length, depth);
+
   list.sort((a, b) => b.events - a.events);
   const max = Math.max(...list.map(g => g.events), 1);
   const totals = list.reduce((a, g) => addTotals(a, g), { events: 0, hosts: 0, bookings: 0 });
-  const scopeLine = list.length + (geoPath.length === 2 ? ' cities' : geoPath.length === 1 ? ' states/regions' : ' countries')
+  const scopeLine = list.length + ' ' + geoWord(list.length, depth)
     + ' shown · ' + totals.events + ' events · ' + totals.hosts + ' hosts · ' + totals.bookings.toLocaleString() + ' confirmed bookings';
 
   const crumbs = [{ label: 'All countries', path: [] }];
