@@ -32,16 +32,6 @@
 
   .title{font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;margin-bottom:18px;}
 
-  .filterbar{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:22px;}
-  .filter-presets{display:flex;gap:8px;flex-wrap:wrap;}
-  .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;color:var(--ink);}
-  .chip:hover{border-color:var(--rust);}
-  .chip.on{background:var(--ink);border-color:var(--ink);color:var(--rust);}
-  .filter-custom{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
-  .filter-custom label{display:flex;flex-direction:column;gap:5px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.6;}
-  .filter-custom input[type="date"]{font-family:inherit;font-size:13.5px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;}
-  .filter-asof{font-size:12px;opacity:.55;margin-top:12px;}
-
   .main-tabs{display:flex;gap:8px;margin-bottom:22px;border-bottom:1px solid var(--line);}
   .main-tab{padding:11px 4px;margin-right:18px;border:none;background:none;font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;opacity:.5;border-bottom:3px solid transparent;border-radius:0;}
   .main-tab.on{opacity:1;border-bottom-color:var(--rust);}
@@ -86,7 +76,7 @@
   .hero-num{font-family:'Poppins',sans-serif;font-size:46px;font-weight:700;line-height:1;}
   .hero-label{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;font-weight:700;margin-bottom:8px;}
   .pill-trend{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:#eef7ee;color:#2e7d32;}
-  .hero-stats{display:flex;gap:56px;margin-top:18px;flex-wrap:wrap;}
+  .hero-stats{display:flex;gap:88px;margin-top:18px;flex-wrap:wrap;}
 
   .week-chart{display:flex;align-items:flex-end;gap:10px;height:140px;padding-top:8px;}
   .week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;position:relative;}
@@ -130,15 +120,6 @@
 
   <div id="mainContent">
     <div class="title">Analytics</div>
-
-    <div class="filterbar">
-      <div class="filter-presets" id="rangePresets"></div>
-      <div class="filter-custom" id="customRangeBox" style="display:none;">
-        <label>From <input type="date" id="fromDate"></label>
-        <label>To <input type="date" id="toDate"></label>
-      </div>
-      <div class="filter-asof" id="asOfLine"></div>
-    </div>
 
     <div class="main-tabs">
       <button class="main-tab on" data-tab="overview" type="button">Overview</button>
@@ -214,54 +195,18 @@ function rollUp(node){
 /* ---------------------------- shared page state ---------------------------- */
 let tab = 'overview';
 let geoPath = [];
-let range = 'last30';
-let customFrom = '2026-10-01', customTo = '2026-10-30';
-
-const RANGE_LABELS = {
-  last7: 'last 7 days', last30: 'last 30 days', last90: 'last 90 days',
-  all: 'all time (since launch)', custom: 'a custom range',
-};
-function rangeLabel(){
-  if(range === 'custom') return (customFrom && customTo) ? customFrom + ' to ' + customTo : 'a custom range';
-  return RANGE_LABELS[range];
-}
-function rangeLabelCap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
-
-/* ---------------------------- filter bar ---------------------------- */
-function renderFilterBar(){
-  const presets = [
-    { key: 'last7', label: 'Last 7 days' },
-    { key: 'last30', label: 'Last 30 days' },
-    { key: 'last90', label: 'Last 90 days' },
-    { key: 'all', label: 'Since launch' },
-    { key: 'custom', label: 'Custom range' },
-  ];
-  document.getElementById('rangePresets').innerHTML = presets.map(p =>
-    `<button type="button" class="chip ${range === p.key ? 'on' : ''}" data-range="${p.key}">${esc(p.label)}</button>`
-  ).join('');
-  document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { range = b.dataset.range; renderFilterBar(); render(); });
-
-  document.getElementById('customRangeBox').style.display = range === 'custom' ? '' : 'none';
-  document.getElementById('fromDate').value = customFrom;
-  document.getElementById('toDate').value = customTo;
-  document.getElementById('fromDate').onchange = (e) => { customFrom = e.target.value; renderFilterBar(); render(); };
-  document.getElementById('toDate').onchange = (e) => { customTo = e.target.value; renderFilterBar(); render(); };
-
-  document.getElementById('asOfLine').textContent = 'Showing ' + rangeLabel() + ' · as of Oct 30, 2026';
-}
 
 /* ---------------------------- Overview ---------------------------- */
 function renderOverview(){
   const grand = rollUp({ states: GEO.flatMap(c => c.states) });
-  const cityCount = GEO.reduce((n, c) => n + c.states.reduce((m, s) => m + s.cities.length, 0), 0);
 
   const tiles = [
     { label: 'Total users', value: '1,247', sub: '+38 this week', subClass: 'up' },
-    { label: 'Hosts', value: String(grand.hosts), sub: 'across ' + cityCount + ' cities', subClass: '' },
-    { label: 'Events', value: String(grand.events), sub: '270 upcoming, 30 past', subClass: '' },
+    { label: 'Hosts', value: String(grand.hosts), sub: '+4 this week', subClass: 'up' },
+    { label: 'Events', value: String(grand.events), sub: '+19 this week', subClass: 'up' },
     { label: 'Pending review', value: '12', sub: 'waiting on a decision', subClass: '' },
     { label: 'Countries covered', value: String(GEO.length), sub: GEO.reduce((n, c) => n + c.states.length, 0) + ' states/regions', subClass: '' },
-    { label: 'Confirmed bookings', value: grand.bookings.toLocaleString(), sub: '124 new in ' + rangeLabel(), subClass: 'up' },
+    { label: 'Confirmed bookings', value: grand.bookings.toLocaleString(), sub: '+124 this week', subClass: 'up' },
   ];
 
   const statusRaw = [
@@ -369,14 +314,13 @@ function renderBookings(){
     <div class="panel" style="margin-bottom:28px;">
       <div class="hero">
         <div><div class="hero-label">Confirmed bookings</div><div class="hero-num">1,612</div></div>
-        <span class="pill-trend">124 new in ${esc(rangeLabel())}</span>
+        <span class="pill-trend">+124 this week</span>
       </div>
       <div class="hero-stats">
         <div><div class="hero-label">Cancelled</div><div style="font-weight:700;font-size:16px;">58</div></div>
         <div><div class="hero-label">Awaiting host approval</div><div style="font-weight:700;font-size:16px;">21</div></div>
         <div><div class="hero-label">Instant-booked</div><div style="font-weight:700;font-size:16px;">1,340</div></div>
       </div>
-      <div class="section-note" style="margin-top:14px;">Revenue (price × confirmed bookings) isn't shown yet — still settling how it should be calculated.</div>
     </div>
 
     <div class="section" style="margin-top:0;">
@@ -407,7 +351,7 @@ function renderBookings(){
     </div>
 
     <div class="section">
-      <div class="section-head"><div class="section-title">Confirmed bookings by category</div><div class="section-note">${esc(rangeLabelCap(rangeLabel()))}</div></div>
+      <div class="section-head"><div class="section-title">Confirmed bookings by category</div><div class="section-note">All time</div></div>
       <div class="panel">
         ${categoryRaw.map(c => `
           <div class="bar-row">
@@ -448,11 +392,7 @@ function renderAll(){
   document.getElementById('mainContent').style.display = isMain ? '' : 'none';
   document.getElementById('blocked').style.display = isMain ? 'none' : '';
   if(!isMain) return;
-  // render() (the tab content) goes first and on its own: it must never be skipped because
-  // something in the filter bar failed. Each piece is independent and wrapped so one breaking
-  // never blanks out the rest of the page.
-  try{ render(); }catch(e){ console.warn('Could not render tab content:', e); }
-  try{ renderFilterBar(); }catch(e){ console.warn('Could not render the filter bar:', e); }
+  render();
 }
 
 SanghaAdmin.ready.then(ok => { if(!ok) return; renderAll(); });
